@@ -1,6 +1,6 @@
 # KaspaModule
 
-Steps to make it work:
+Steps to make it work from source code:
 1. Install:
 - [Git](https://git-scm.com/)
 - [Git LFS](https://git-lfs.github.com/)
