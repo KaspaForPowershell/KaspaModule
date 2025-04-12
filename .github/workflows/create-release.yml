@@ -1,0 +1,54 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Auto-trigger on version tags like v1.0.0
+
+  workflow_dispatch:  # 👈 Manual trigger from GitHub UI
+    inputs:
+      tag_name:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: true
+      release_name:
+        description: 'Release name'
+        required: false
+      generate_release:
+        description: 'Create GitHub Release (true/false)'
+        required: false
+        default: 'true'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'  # Change as needed
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --configuration Release
+
+    - name: Publish
+      run: dotnet publish -c Release -o publish
+
+    - name: Zip published files
+      run: Compress-Archive -Path publish/* -DestinationPath release.zip
+
+    - name: Create GitHub Release
+      if: ${{ github.event.inputs.generate_release == 'true' }}
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ github.event.inputs.tag_name }}
+        name: ${{ github.event.inputs.release_name || github.event.inputs.tag_name }}
+        files: release.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.PUBLIC_PAT }}
