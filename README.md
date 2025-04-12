@@ -11,7 +11,7 @@ Steps to make it work:
 git clone https://github.com/KaspaForPowershell/KaspaModule
 ```
 3. Create Powershell [profile](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_profiles) file.
-4. Add to the Powershell profile path to 'this-initialize-environment.ps1' file that you can find in this repository '.custom/Scripts' folder. Ensure that you prefix this path with a dot, for example:   
+4. Add to the Powershell profile path to `this-initialize-environment.ps1` file that you can find in this repository '.custom/Scripts' folder. Ensure that you prefix this path with a dot, for example:   
 ```powershell
 . "C:\Users\YOUR_USER_NAME\Documents\GIT\PWSH.Kasplex\.custom\Scripts\this-initialize-environment.ps1"
 ```
