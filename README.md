@@ -2,8 +2,7 @@
 
 Steps to make it work:
 1. Install:
-- [Git](https://git-scm.com/)
-- [Git LFS](https://git-lfs.github.com/)
+- [Git](https://git-scm.com/) and [Git LFS](https://git-lfs.github.com/)
 - Current version of Powershell for your operating system [Windows](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-windows)/[Linux](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-linux)/[MacOS](https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell-on-macos)
 - [.NET](https://dotnet.microsoft.com/en-us/download/dotnet) version 8.0 or up for your operating system
 2. Clone the repository: 
