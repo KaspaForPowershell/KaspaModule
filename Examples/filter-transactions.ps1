@@ -34,9 +34,6 @@
         Returns a custom object containing two properties:
         - MinerTransactions: An array of transactions related to mining activities
         - OtherTransactions: An array of all other transactions
-
-    .NOTES
-        Requires the PWSH.Kaspa module to be installed and imported.
 #>
 
 param 
@@ -69,11 +66,7 @@ $result = if (-not $FullTransactions.IsPresent) { ./download-transaction-history
 else { ./download-transaction-history.ps1 -Address $Address -ResolvePreviousOutpoints No }
 
 # Handle the case when no transactions are found.
-if (($null -eq $result) -or ($result.TransactionsCount -eq 0))
-{
-    Write-Host "No transactions found. Exiting." -ForegroundColor Red
-    return $null
-}
+if (($null -eq $result) -or ($result.TransactionsCount -eq 0)) { return $null }
 
 Write-Host "  Processing $($result.TransactionsCount) transactions..." -ForegroundColor Cyan
 

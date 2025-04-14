@@ -250,6 +250,10 @@ if (-not($transactionsCount.Total -gt 0))
     return $null 
 }
 
+# Small optimization, since we know that if .LimitExceeded is false, we have less than 10K transactions (with current API implementation), we can safely manage this in one sweep.
+if (-not $transactionsCount.LimitExceeded -and $transactionsCount.Total -le 10000)
+{ $ConcurrencyLimit = [math]::Ceiling($transactionsCount.Total / $BATCH_SIZE) }
+
 Write-Host "`n🚀 Starting parallel transaction retrieval mode with $($ConcurrencyLimit) concurrent job(s)..." -ForegroundColor Cyan
 
 $retrievedTransactions = @()    # Stores all successfully retrieved transactions.
@@ -288,7 +292,7 @@ while ($true)
             Write-Host "✔️ Finished main pass. Entering retry mode if needed..." -ForegroundColor Green
             $pendingOffsets.Clear()
             $mainPass = $false
-            $retryPass = $failedOffsets.Count -gt 0
+            $retryPass = ($failedOffsets.Count -gt 0) -and ($MaxFailedTries -gt 0)
             continue
         }
 
