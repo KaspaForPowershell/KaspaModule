@@ -1,13 +1,13 @@
-
 <#
     .SYNOPSIS
-        Concurrently retrieves transaction history for a Kaspa address.
+        Parallel transaction retriever for a Kaspa address using background jobs.
 
     .DESCRIPTION
         This script fetches the complete transaction history for a specified Kaspa address by making
         concurrent API calls in batches. It handles pagination automatically and combines all results
         into a single collection. The script supports customizing fields returned, limiting concurrency,
         and resolving previous outpoints for comprehensive transaction data.
+        It also includes intelligent retry logic for failed requests and optional console cleaning for better readability.
 
     .PARAMETER Address
         The Kaspa address to query transactions for. Must be a valid Kaspa address format.
@@ -30,13 +30,12 @@
         - Light: Minimal information about previous outpoints
         - Full : Full transaction detail resolution of each previous outpoint
 
+    .PARAMETER MaxFailedTries
+        The maximum number of retry attempts for addresses from failed jobs before abandoning processing. Provides resilience against temporary network or API issues. Defaults to 3 if not specified.
+
     .PARAMETER CleanConsole
         An optional switch to clear the console screen before processing the addresses. 
         If this switch is provided, the console will be cleared at the beginning of the script execution.
-
-    .EXAMPLE
-        PS> .\download-transaction-history.ps1
-        Retrieves all transactions for the default address with default settings.
 
     .EXAMPLE
         PS> .\download-transaction-history.ps1 -Address "kaspa:qqscm7geuuc26ffneeyslsfcytg0vzf9848slkxchzdkgx3mn5mdx4dcavk2r" -ConcurrencyLimit 10
@@ -45,15 +44,12 @@
     .EXAMPLE
         PS> .\download-transaction-history.ps1 -Address "kaspa:qqscm7geuuc26ffneeyslsfcytg0vzf9848slkxchzdkgx3mn5mdx4dcavk2r" -Fields "subnetwork_id,transaction_id,block_time"
         Retrieves only specific fields (subnetwork_id, transaction_id, block_time) for all transactions.
-
+        
     .OUTPUTS
         Returns a custom PSCustomObject object with the following properties:
-        - TransactionsCount: Total number of transactions retrieved
-        - Transactions: Array of transaction objects
-        - FailedOffsets: List of any offsets that failed during retrieval
-
-    .NOTES
-        The script uses PowerShell jobs for parallel processing to improve performance.
+        - TransactionsCount: Number of transactions retrieved
+        - Transactions: List of retrieved transaction data
+        - FailedOffsets: Any offsets that failed retrieval after retries
 #>
 
 param
@@ -73,6 +69,10 @@ param
     [Parameter(Mandatory=$false)]
     [PWSH.Kaspa.Base.KaspaResolvePreviousOutpointsOption] $ResolvePreviousOutpoints = [PWSH.Kaspa.Base.KaspaResolvePreviousOutpointsOption]::No,
 
+    [ValidateRange(0, [uint]::MaxValue)]
+    [Parameter(Mandatory=$false)]
+    [uint] $MaxFailedTries = 3,
+
     [Parameter(Mandatory=$false)]
     [switch] $CleanConsole
 )
@@ -91,43 +91,34 @@ New-Variable -Name "BATCH_SIZE" -Value 500 -Option ReadOnly -Scope Script
 HELPERS                                                            |
 ----------------------------------------------------------------- #>
 
-function Start-TransactionRetrievalJobs
+function Start-TransactionRetrievalJobsByOffsets
 {
-   <#
+    <#
         .SYNOPSIS
-            Starts concurrent jobs to retrieve a batch of Kaspa transactions.
+            Starts parallel background jobs to retrieve Kaspa transactions in batches.
 
         .DESCRIPTION
-            This function creates a number of PowerShell jobs based on the specified concurrency limit.
-            Each job fetches a page of transactions (defined by a batch size) for the specified Kaspa address.
-            Fields can be selectively specified, and previous outpoints can be optionally resolved.
-            Offsets are calculated based on the current page number and batch size.
+            This helper function launches background jobs to fetch transaction data for a specific address. Each job processes a separate offset, and the function respects a maximum concurrency limit.
 
         .PARAMETER Address
-            The Kaspa address to retrieve transactions for.
+            Look at main script parameters for parameter explanation.
 
         .PARAMETER ConcurrencyLimit
-            The number of jobs to run concurrently. Each job retrieves one batch of transactions.
+            Look at main script parameters for parameter explanation.
 
         .PARAMETER Fields
-            Optional comma-separated list of fields to include in the response. If empty, all fields are retrieved.
+            Look at main script parameters for parameter explanation.
 
         .PARAMETER ResolvePreviousOutpoints
-            Specifies the depth of resolution for previous outpoints:
-            - No: Do not resolve previous outpoints (default).
-            - Light: Include minimal information.
-            - Full: Include complete transaction details.
+            Look at main script parameters for parameter explanation.
 
-        .PARAMETER Page
-            The current page number used to calculate batch offsets. This is optional and defaults to 0 if not provided.
+        .PARAMETER PendingOffsets
+            A queue of offsets (page indices) to use for each job.
 
         .OUTPUTS
-            PSCustomObject with two properties:
-            - Jobs: An array of Job objects created.
-            - Offsets: A mapping of job IDs to the offsets they were assigned.
-
-        .NOTES
-            The jobs created here must be awaited and resolved using `Wait-Job` and `Receive-Job`.
+            Returns a custom PSCustomObject object with the following properties:
+            - Jobs: List of job objects started
+            - Offsets: Mapping of job IDs to the offsets they processed
     #>
 
     param
@@ -145,18 +136,16 @@ function Start-TransactionRetrievalJobs
         [Parameter(Mandatory=$true)]
         [PWSH.Kaspa.Base.KaspaResolvePreviousOutpointsOption] $ResolvePreviousOutpoints,
 
-        [Parameter(Mandatory=$false)]
-        [uint] $Page
+        [Parameter(Mandatory=$true)]
+        [System.Collections.Generic.Queue[uint]] $PendingOffsets
     )
 
     $jobs = @()         # Collection to store the async job objects.
     $offsets = @{}      # Dictionary to map job IDs to their corresponding offsets.
 
-     # Start a batch of concurrent jobs based on the concurrency limit.
-    for ($i = 0; $i -lt $ConcurrencyLimit; $i++) 
+    for ($i = 0; $i -lt $ConcurrencyLimit -and $PendingOffsets.Count -gt 0; $i++) 
     {
-        # Calculate the starting offset for this job.
-        $currentOffset = ($Page + $i) * $BATCH_SIZE
+        $currentOffset = $PendingOffsets.Dequeue()
         Write-Host "  Starting job for transactions $($currentOffset) to $($currentOffset + $BATCH_SIZE - 1)..." -ForegroundColor Blue
 
         # Create the appropriate job based on whether fields are specified.
@@ -176,27 +165,24 @@ function Start-TransactionRetrievalJobs
 
 function Resolve-TransactionRetrievalResult
 {
-        <#
+    <#
         .SYNOPSIS
-            Resolves the output of concurrent transaction retrieval jobs.
+        Processes the results of transaction retrieval jobs.
 
         .DESCRIPTION
-            This function waits for and processes the results from PowerShell jobs started by
-            `Start-TransactionRetrievalJobs`. It collects transaction data, removes completed jobs,
-            and determines whether to continue pagination based on the number of results returned.
-            It also tracks any failed jobs and their corresponding offsets for possible retry.
+        Waits for each job to complete, collects results, detects end-of-data scenarios, and gathers failed offsets for retries.
 
-        .PARAMETER Result
-            The output from `Start-TransactionRetrievalJobs`, containing jobs and their offset mapping.
+        .PARAMETER RetrievalResult
+            The object containing jobs and their corresponding offsets as returned from Start-TransactionRetrievalJobsByOffsets.
 
-        .PARAMETER Page
-            The current page index. Used for diagnostic logging.
+        .PARAMETER Address
+            Look at main script parameters for parameter explanation.
 
         .OUTPUTS
-            PSCustomObject with two properties:
-            - ShouldContinue: Indicates whether additional pages of transactions should be retrieved.
-            - Transactions: An array of transaction data retrieved from all jobs.
-            - FailedOffsets: List of any offsets that failed during retrieval
+            Returns a custom PSCustomObject object with the following properties:
+            - EndOfData: Boolean indicating if the end of available data was reached
+            - Transactions: Aggregated list of retrieved transactions
+            - FailedOffsets: List of offsets where jobs failed and need retry
     #>
 
     param
@@ -205,15 +191,12 @@ function Resolve-TransactionRetrievalResult
         [PSCustomObject] $RetrievalResult,
 
         [Parameter(Mandatory=$true)]
-        [uint] $Page
+        [string] $Address
     )
 
+    $endOfData = $false
     $returnResults = @()
     $failedOffsets = @()
-    $shouldContinue = $true
-
-    # Process the results from each job.
-    $currentPage = $Page
 
     foreach ($job in $RetrievalResult.Jobs) 
     {
@@ -221,12 +204,14 @@ function Resolve-TransactionRetrievalResult
         if ($job.State -eq 'Failed') 
         { 
             Write-Warning "Job $($job.Id) failed: $($job.Error)"
-            $failedOffsets += $RetrievalResult.Offsets[$job.Id]
+            $failedOffset = $RetrievalResult.Offsets[$job.Id]
+            $failedOffsets += $failedOffset 
+            Write-Host "  Recorded failed offset: $($failedOffset)" -ForegroundColor Red
             Remove-Job -Id $job.Id -Force
             continue
         }
 
-        Write-Host "Processing results from job ID $($job.Id) (page $($currentPage))..." -ForegroundColor Blue
+        Write-Host "Processing results from job ID $($job.Id)..." -ForegroundColor Blue
         $pageResult = Receive-Job -Job $job
         Remove-Job -Job $job -Force
 
@@ -239,17 +224,15 @@ function Resolve-TransactionRetrievalResult
             # If we get fewer transactions than the batch size, we've reached the end.
             if ($pageResult.Count -lt $BATCH_SIZE) 
             {
-                Write-Host "  Less than $($BATCH_SIZE) transactions returned. Assuming end of data." -ForegroundColor Yellow
-                $shouldContinue = $false
+                Write-Host "  Less than $($BATCH_SIZE) transactions returned. Assuming end of data for address '$($Address)'." -ForegroundColor Yellow
+                $endOfData = $true
                 break
             }
         }
-
-        $currentPage++
     }
 
     return [PSCustomObject]@{
-        ShouldContinue = $shouldContinue
+        EndOfData = $endOfData
         Transactions = $returnResults
         FailedOffsets = $failedOffsets
     }
@@ -261,33 +244,104 @@ MAIN                                                               |
 
 # First check if the address has any transactions at all to avoid unnecessary processing.
 $transactionsCount = Get-TransactionsCountForAddress -Address $Address
-if (-not($transactionsCount.Total -gt 0)) { return $null }
+if (-not($transactionsCount.Total -gt 0)) 
+{ 
+    Write-Host "⚠️ No transactions found for address '$($Address)'." -ForegroundColor Yellow
+    return $null 
+}
 
-Write-Host "Starting parallel transaction retrieval mode with $($ConcurrencyLimit) concurrent job(s)..." -ForegroundColor Cyan
+Write-Host "`n🚀 Starting parallel transaction retrieval mode with $($ConcurrencyLimit) concurrent job(s)..." -ForegroundColor Cyan
 
-# Initialize collections to store our results and track failures.
 $retrievedTransactions = @()    # Stores all successfully retrieved transactions.
 $failedOffsets = @()            # Tracks any failed batch retrievals by their offset.
-$page = 0                       # Starting page (used to calculate offsets).
+$pendingOffsets = [System.Collections.Generic.Queue[uint]]::new()
 
-# Main pagination loop - continues until we've retrieved all transactions or encountered a stopping condition.
-while ($true)
+$page = 0
+$mainPass = $true
+
+$retryCount = 0
+$retryPass = $false
+
+while ($true) 
 {
-    Write-Host "`nStarting batch at page $($page)..." -ForegroundColor Magenta
-    $startResult = Start-TransactionRetrievalJobs -Address $Address -ConcurrencyLimit $ConcurrencyLimit -ResolvePreviousOutpoints $ResolvePreviousOutpoints -Fields $Fields -Page $page
+    if ($mainPass -eq $true)
+    {
+        for ($i = 0; $i -lt $ConcurrencyLimit; $i++) 
+        {
+            $currentOffset = ($page + $i) * $BATCH_SIZE
+            $pendingOffsets.Enqueue($currentOffset)
+        }
 
-    Write-Host "Waiting for $($startResult.Jobs.Count) job(s) to complete..." -ForegroundColor Cyan
-    $null = $startResult.Jobs | Wait-Job   # Wait for all jobs in this batch to complete before processing their results.
-
-    # Process the results from each job.
-    $resolveResult = Resolve-TransactionRetrievalResult -RetrievalResult $startResult -Page $page
-    $retrievedTransactions += $resolveResult.Transactions
-    $failedOffsets += $resolveResult.FailedOffsets
+        Write-Host "`n📄 Starting batch at page $($page)..." -ForegroundColor Magenta
+        $startResult = Start-TransactionRetrievalJobsByOffsets -Address $Address -ConcurrencyLimit $ConcurrencyLimit -ResolvePreviousOutpoints $ResolvePreviousOutpoints -Fields $Fields -PendingOffsets $pendingOffsets
+        
+        Write-Host "⌛ Waiting for $($startResult.Jobs.Count) job(s) to complete..." -ForegroundColor Cyan
+        $null = $startResult.Jobs | Wait-Job   # Wait for all jobs in this batch to complete before processing their results.
+        
+        # Process the results from each job.
+        $resolveResult = Resolve-TransactionRetrievalResult -RetrievalResult $startResult -Address $Address
+        $retrievedTransactions += $resolveResult.Transactions
+        $failedOffsets += $resolveResult.FailedOffsets
     
-    if (-not $resolveResult.ShouldContinue) { break }
+        if ($resolveResult.EndOfData -eq $true) 
+        { 
+            Write-Host "✔️ Finished main pass. Entering retry mode if needed..." -ForegroundColor Green
+            $pendingOffsets.Clear()
+            $mainPass = $false
+            $retryPass = $failedOffsets.Count -gt 0
+            continue
+        }
 
-    # Advance to the next set of pages based on our concurrency limit.
-    $page = $page + $ConcurrencyLimit;
+        # Advance to the next set of pages based on our concurrency limit.
+        $page = $page + $ConcurrencyLimit;
+    }
+    
+    if ($retryPass -eq $true)
+    {
+        if ($pendingOffsets.Count -eq 0)
+        {
+            # Ensure we have any failed offsets to work on.
+            if ($failedOffsets.Count -eq 0) 
+            {
+                Write-Host "✅ All failed offsets processed. Exiting retry mode." -ForegroundColor Green
+                $retryPass = $false
+                continue
+            }
+
+            foreach($offset in $failedOffsets) 
+            { 
+                Write-Host "🔁 Retrying offset $($offset)..." -ForegroundColor DarkCyan
+                $pendingOffsets.Enqueue($offset) 
+            }
+
+            $failedOffsets.Clear()
+            $retryCount++
+            Write-Host "🔄 Retry attempt $($retryCount) of $($MaxFailedTries)" -ForegroundColor DarkYellow
+        }
+
+        $startResult = Start-TransactionRetrievalJobsByOffsets -Address $Address -ConcurrencyLimit $ConcurrencyLimit -ResolvePreviousOutpoints $ResolvePreviousOutpoints -Fields $Fields -PendingOffsets $pendingOffsets
+
+        Write-Host "⌛ Waiting for $($startResult.Jobs.Count) job(s) to complete..." -ForegroundColor Cyan
+        $null = $startResult.Jobs | Wait-Job   # Wait for all jobs in this batch to complete before processing their results.
+
+        # Process the results from each job.
+        $resolveResult = Resolve-TransactionRetrievalResult -RetrievalResult $startResult -Address $Address
+        $retrievedTransactions += $resolveResult.Transactions
+        $failedOffsets += $resolveResult.FailedOffsets
+
+        if (-not($retryCount -lt $MaxFailedTries)) 
+        { 
+            Write-Host "❌ Max retry attempts reached. Skipping remaining failed offsets." -ForegroundColor Red
+            $retryPass = $false
+        }
+    }
+
+    # Are we done?
+    if ($mainPass -eq $false -and $retryPass -eq $false) 
+    { 
+        Write-Host "`n✅ Transaction retrieval complete!" -ForegroundColor Green
+        break 
+    }
 
     # Brief delay to prevent overwhelming the API server with requests.
     # Adjust this value based on the API's rate limiting policies.
@@ -299,7 +353,7 @@ OUTPUT                                                             |
 ----------------------------------------------------------------- #>
 
 return [PSCustomObject]@{
-    TransactionsCount = $retrievedTransactions.Count   # Total number of transactions successfully retrieved.
+    TransactionsCount = $retrievedTransactions.Count    # Total number of transactions successfully retrieved.
     Transactions = $retrievedTransactions               # The actual transaction data.
     FailedOffsets = $failedOffsets                      # List of offsets that failed (useful for retries).
 }
