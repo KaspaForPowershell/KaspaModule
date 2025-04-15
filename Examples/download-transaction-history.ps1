@@ -19,6 +19,9 @@
         
         Higher values may improve performance but could potentially overload the API service.
 
+        When fewer than 10,000 transactions are detected,
+        this value is automatically optimized to reduce the total number of API passes.
+
     .PARAMETER Fields
         Specific fields to retrieve for each transaction. Leave empty for all fields.
         Default: "" (empty string, returns all fields)
@@ -32,6 +35,9 @@
 
     .PARAMETER MaxFailedTries
         The maximum number of retry attempts for addresses from failed jobs before abandoning processing. Provides resilience against temporary network or API issues. Defaults to 3 if not specified.
+
+    .PARAMETER EnableLogging
+        Enables verbose-style logging during execution. When specified, detailed progress and status messages are printed to the console.
 
     .PARAMETER CleanConsole
         An optional switch to clear the console screen before processing the addresses. 
@@ -74,6 +80,9 @@ param
     [uint] $MaxFailedTries = 3,
 
     [Parameter(Mandatory=$false)]
+    [switch] $EnableLogging,
+
+    [Parameter(Mandatory=$false)]
     [switch] $CleanConsole
 )
 
@@ -86,6 +95,9 @@ if ($CleanConsole.IsPresent) { Clear-Host }
 
 # Set maximum transactions per API call (fixed by API limits), so we set it to be readonly  https://tommymaynard.com/read-only-and-constant-variables/
 New-Variable -Name "BATCH_SIZE" -Value 500 -Option ReadOnly -Scope Script
+
+# Should the script log each operation step? We set it to whole script.
+New-Variable -Name "SHOULD_LOG" -Value $EnableLogging.IsPresent -Option ReadOnly -Scope Script
 
 <# -----------------------------------------------------------------
 HELPERS                                                            |
@@ -146,7 +158,7 @@ function Start-TransactionRetrievalJobsByOffsets
     for ($i = 0; $i -lt $ConcurrencyLimit -and $PendingOffsets.Count -gt 0; $i++) 
     {
         $currentOffset = $PendingOffsets.Dequeue()
-        Write-Host "  Starting job for transactions $($currentOffset) to $($currentOffset + $BATCH_SIZE - 1)..." -ForegroundColor Blue
+        if ($SHOULD_LOG) { Write-Host "  Starting job for transactions $($currentOffset) to $($currentOffset + $BATCH_SIZE - 1)..." -ForegroundColor Blue }
 
         # Create the appropriate job based on whether fields are specified.
         $job = if ($Fields -eq [string]::Empty) { Get-FullTransactionsForAddress -Address $Address -Limit $BATCH_SIZE -ResolvePreviousOutpoints $ResolvePreviousOutpoints -Offset $currentOffset -AsJob }
@@ -203,28 +215,28 @@ function Resolve-TransactionRetrievalResult
         # Handle failed jobs by recording their offsets for potential retry.
         if ($job.State -eq 'Failed') 
         { 
-            Write-Warning "Job $($job.Id) failed: $($job.Error)"
+            if ($SHOULD_LOG) { Write-Warning "Job $($job.Id) failed: $($job.Error)" }
             $failedOffset = $RetrievalResult.Offsets[$job.Id]
             $failedOffsets += $failedOffset 
-            Write-Host "  Recorded failed offset: $($failedOffset)" -ForegroundColor Red
+            if ($SHOULD_LOG) { Write-Host "  Recorded failed offset: $($failedOffset)" -ForegroundColor Red }
             Remove-Job -Id $job.Id -Force
             continue
         }
 
-        Write-Host "Processing results from job ID $($job.Id)..." -ForegroundColor Blue
+        if ($SHOULD_LOG) { Write-Host "Processing results from job ID $($job.Id)..." -ForegroundColor Blue }
         $pageResult = Receive-Job -Job $job
         Remove-Job -Job $job -Force
 
         # Process successful results and check if we've reached the end of the data.
         if ($null -ne $pageResult) 
         {
-            Write-Host "  Retrieved $($pageResult.Count) transactions" -ForegroundColor Green
+            if ($SHOULD_LOG) { Write-Host "  Retrieved $($pageResult.Count) transactions" -ForegroundColor Green }
             $returnResults += $pageResult
     
             # If we get fewer transactions than the batch size, we've reached the end.
             if ($pageResult.Count -lt $BATCH_SIZE) 
             {
-                Write-Host "  Less than $($BATCH_SIZE) transactions returned. Assuming end of data for address '$($Address)'." -ForegroundColor Yellow
+                if ($SHOULD_LOG) { Write-Host "  Less than $($BATCH_SIZE) transactions returned. Assuming end of data for address '$($Address)'." -ForegroundColor Yellow }
                 $endOfData = $true
                 break
             }
@@ -246,15 +258,15 @@ MAIN                                                               |
 $transactionsCount = Get-TransactionsCountForAddress -Address $Address
 if (-not($transactionsCount.Total -gt 0)) 
 { 
-    Write-Host "⚠️ No transactions found for address '$($Address)'." -ForegroundColor Yellow
-    return $null 
+    if ($SHOULD_LOG) { Write-Host "⚠️ No transactions found for address '$($Address)'." -ForegroundColor Yellow }
+    return $null
 }
 
 # Small optimization, since we know that if .LimitExceeded is false, we have less than 10K transactions (with current API implementation), we can safely manage this in one sweep.
 if (-not $transactionsCount.LimitExceeded -and $transactionsCount.Total -le 10000)
 { $ConcurrencyLimit = [math]::Ceiling($transactionsCount.Total / $BATCH_SIZE) }
 
-Write-Host "`n🚀 Starting parallel transaction retrieval mode with $($ConcurrencyLimit) concurrent job(s)..." -ForegroundColor Cyan
+if ($SHOULD_LOG) { Write-Host "`n🚀 Starting parallel transaction retrieval mode with $($ConcurrencyLimit) concurrent job(s)..." -ForegroundColor Cyan }
 
 $retrievedTransactions = @()    # Stores all successfully retrieved transactions.
 $failedOffsets = @()            # Tracks any failed batch retrievals by their offset.
@@ -276,10 +288,10 @@ while ($true)
             $pendingOffsets.Enqueue($currentOffset)
         }
 
-        Write-Host "`n📄 Starting batch at page $($page)..." -ForegroundColor Magenta
+        if ($SHOULD_LOG) { Write-Host "`n📄 Starting batch at page $($page) for address '$($Address)'..." -ForegroundColor Magenta }
         $startResult = Start-TransactionRetrievalJobsByOffsets -Address $Address -ConcurrencyLimit $ConcurrencyLimit -ResolvePreviousOutpoints $ResolvePreviousOutpoints -Fields $Fields -PendingOffsets $pendingOffsets
         
-        Write-Host "⌛ Waiting for $($startResult.Jobs.Count) job(s) to complete..." -ForegroundColor Cyan
+        if ($SHOULD_LOG) { Write-Host "⌛ Waiting for $($startResult.Jobs.Count) job(s) to complete..." -ForegroundColor Cyan }
         $null = $startResult.Jobs | Wait-Job   # Wait for all jobs in this batch to complete before processing their results.
         
         # Process the results from each job.
@@ -289,7 +301,7 @@ while ($true)
     
         if ($resolveResult.EndOfData -eq $true) 
         { 
-            Write-Host "✔️ Finished main pass. Entering retry mode if needed..." -ForegroundColor Green
+            if ($SHOULD_LOG) { Write-Host "✔️ Finished main pass. Entering retry mode if needed..." -ForegroundColor Green }
             $pendingOffsets.Clear()
             $mainPass = $false
             $retryPass = ($failedOffsets.Count -gt 0) -and ($MaxFailedTries -gt 0)
@@ -307,25 +319,25 @@ while ($true)
             # Ensure we have any failed offsets to work on.
             if ($failedOffsets.Count -eq 0) 
             {
-                Write-Host "✅ All failed offsets processed. Exiting retry mode." -ForegroundColor Green
+                if ($SHOULD_LOG) { Write-Host "✅ All failed offsets processed. Exiting retry mode." -ForegroundColor Green }
                 $retryPass = $false
                 continue
             }
 
             foreach($offset in $failedOffsets) 
             { 
-                Write-Host "🔁 Retrying offset $($offset)..." -ForegroundColor DarkCyan
+                if ($SHOULD_LOG) { Write-Host "🔁 Retrying offset $($offset)..." -ForegroundColor DarkCyan }
                 $pendingOffsets.Enqueue($offset) 
             }
 
             $failedOffsets.Clear()
             $retryCount++
-            Write-Host "🔄 Retry attempt $($retryCount) of $($MaxFailedTries)" -ForegroundColor DarkYellow
+            if ($SHOULD_LOG) { Write-Host "🔄 Retry attempt $($retryCount) of $($MaxFailedTries)" -ForegroundColor DarkYellow }
         }
 
         $startResult = Start-TransactionRetrievalJobsByOffsets -Address $Address -ConcurrencyLimit $ConcurrencyLimit -ResolvePreviousOutpoints $ResolvePreviousOutpoints -Fields $Fields -PendingOffsets $pendingOffsets
 
-        Write-Host "⌛ Waiting for $($startResult.Jobs.Count) job(s) to complete..." -ForegroundColor Cyan
+        if ($SHOULD_LOG) { Write-Host "⌛ Waiting for $($startResult.Jobs.Count) job(s) to complete..." -ForegroundColor Cyan }
         $null = $startResult.Jobs | Wait-Job   # Wait for all jobs in this batch to complete before processing their results.
 
         # Process the results from each job.
@@ -335,7 +347,7 @@ while ($true)
 
         if (-not($retryCount -lt $MaxFailedTries)) 
         { 
-            Write-Host "❌ Max retry attempts reached. Skipping remaining failed offsets." -ForegroundColor Red
+            if ($SHOULD_LOG) { Write-Host "❌ Max retry attempts reached. Skipping remaining failed offsets." -ForegroundColor Red }
             $retryPass = $false
         }
     }
@@ -343,7 +355,7 @@ while ($true)
     # Are we done?
     if ($mainPass -eq $false -and $retryPass -eq $false) 
     { 
-        Write-Host "`n✅ Transaction retrieval complete!" -ForegroundColor Green
+        if ($SHOULD_LOG) { Write-Host "`n✅ Transaction retrieval for address '$($Address)' complete!" -ForegroundColor Green }
         break 
     }
 

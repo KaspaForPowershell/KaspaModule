@@ -425,14 +425,14 @@ function Start-QueuedAddressesJobs
             if ([string]::IsNullOrEmpty($QueryFields) -eq $true) { $job = Get-FullTransactionsForAddress -Address $current.Address -Limit 500 -ResolvePreviousOutpoints Light -AsJob  }
             else { $job = Get-FullTransactionsForAddress -Address $current.Address -Limit 500 -Fields:$QueryFields -ResolvePreviousOutpoints Light -AsJob  }
             
-            Write-Host "  Created job using Get-FullTransactionsForAddress" -ForegroundColor Gray
+            Write-Host "  Created job using Get-FullTransactionsForAddress for address '$($current.Address)'" -ForegroundColor Gray
         } 
         else 
         { 
             if ([string]::IsNullOrEmpty($QueryFields) -eq $true) { $job = Get-FullTransactionsForAddressPage -Address $current.Address -Limit $TransactionLimit -Timestamp 0 -BeforeTimestamp -ResolvePreviousOutpoints Light -AsJob }
             else { $job = Get-FullTransactionsForAddressPage -Address $current.Address -Limit $TransactionLimit -Timestamp 0 -BeforeTimestamp -Fields:$QueryFields -ResolvePreviousOutpoints Light -AsJob }
             
-            Write-Host "  Created job using Get-FullTransactionsForAddressPage with limit $($TransactionLimit)" -ForegroundColor Gray
+            Write-Host "  Created job using Get-FullTransactionsForAddressPage with limit $($TransactionLimit) for address '$($current.Address)'" -ForegroundColor Gray
         }
 
         $JobsCollection[$job.Id] = @{
