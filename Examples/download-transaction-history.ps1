@@ -80,7 +80,7 @@ param
     [uint] $MaxFailedTries = 3,
 
     [Parameter(Mandatory=$false)]
-    [switch] $EnableLogging,
+    [switch] $SkipLogging,
 
     [Parameter(Mandatory=$false)]
     [switch] $CleanConsole
@@ -97,7 +97,7 @@ if ($CleanConsole.IsPresent) { Clear-Host }
 New-Variable -Name "BATCH_SIZE" -Value 500 -Option ReadOnly -Scope Script
 
 # Should the script log each operation step? We set it to whole script.
-New-Variable -Name "SHOULD_LOG" -Value $EnableLogging.IsPresent -Option ReadOnly -Scope Script
+New-Variable -Name "SHOULD_LOG" -Value (-not($SkipLogging.IsPresent)) -Option ReadOnly -Scope Script
 
 <# -----------------------------------------------------------------
 HELPERS                                                            |

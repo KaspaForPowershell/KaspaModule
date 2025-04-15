@@ -62,8 +62,8 @@ MAIN                                                               |
 
 # Leverage the download-transaction-history.ps1 script to retrieve transaction data.
 # This approach demonstrates modular script design - reusing existing functionality instead of duplicating code.
-$result = if (-not $FullTransactions.IsPresent) { ./download-transaction-history.ps1 -Address $Address -ResolvePreviousOutpoints No -Fields "subnetwork_id,block_time,transaction_id" -EnableLogging }
-else { ./download-transaction-history.ps1 -Address $Address -ResolvePreviousOutpoints No -EnableLogging }
+$result = if (-not $FullTransactions.IsPresent) { ./download-transaction-history.ps1 -Address $Address -ResolvePreviousOutpoints No -Fields "subnetwork_id,block_time,transaction_id" }
+else { ./download-transaction-history.ps1 -Address $Address -ResolvePreviousOutpoints No }
 
 # Handle the case when no transactions are found.
 if ($null -eq $result) { return $null }
