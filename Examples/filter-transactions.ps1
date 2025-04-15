@@ -46,6 +46,9 @@ param
     [switch] $FullTransactions,
 
     [Parameter(Mandatory=$false)]
+    [switch] $SkipLogging,
+
+    [Parameter(Mandatory=$false)]
     [switch] $CleanConsole
 )
 
@@ -62,13 +65,13 @@ MAIN                                                               |
 
 # Leverage the download-transaction-history.ps1 script to retrieve transaction data.
 # This approach demonstrates modular script design - reusing existing functionality instead of duplicating code.
-$result = if (-not $FullTransactions.IsPresent) { ./download-transaction-history.ps1 -Address $Address -ResolvePreviousOutpoints No -Fields "subnetwork_id,block_time,transaction_id" }
-else { ./download-transaction-history.ps1 -Address $Address -ResolvePreviousOutpoints No }
+$result = if (-not $FullTransactions.IsPresent) { ./download-transaction-history.ps1 -Address $Address -ResolvePreviousOutpoints No -Fields "subnetwork_id,block_time,transaction_id" -SkipLogging:$SkipLogging }
+else { ./download-transaction-history.ps1 -Address $Address -ResolvePreviousOutpoints No -SkipLogging:$SkipLogging }
 
 # Handle the case when no transactions are found.
 if ($null -eq $result) { return $null }
 
-Write-Host "  Processing $($result.TransactionsCount) transactions..." -ForegroundColor Cyan
+if (-not $SkipLogging.IsPresent)  { Write-Host "  Processing $($result.TransactionsCount) transactions..." -ForegroundColor Cyan }
 
 # Initialize arrays to store the categorized transactions.
 $minerTxs = @()     # Will hold mining-related transactions.
@@ -81,20 +84,23 @@ foreach($tx in $result.Transactions)
     else { $otherTxs += $tx }
 }
 
-Write-Host ("  Found {0} mining transactions and {1} other transactions" -f $minerTxs.Count, $otherTxs.Count)-ForegroundColor Cyan
+if (-not $SkipLogging.IsPresent) 
+{
+    Write-Host ("  Found {0} mining transactions and {1} other transactions" -f $minerTxs.Count, $otherTxs.Count)-ForegroundColor Cyan
 
-# Sort all transactions by block time to find the oldest and newest.
-$sorted = $result.Transactions | Sort-Object -Property BlockTime
+    # Sort all transactions by block time to find the oldest and newest.
+    $sorted = $result.Transactions | Sort-Object -Property BlockTime
 
-# Extract and display information about the oldest transaction.
-$oldestTimestamp = ($sorted | Select-Object -First 1).BlockTime
-$oldestDate = ConvertFrom-Timestamp -Timestamp $oldestTimestamp
-Write-Host ("  Oldest transaction: {0} ({1})" -f $oldestDate.LocalDateTime, $oldestTimestamp) -ForegroundColor DarkCyan
+    # Extract and display information about the oldest transaction.
+    $oldestTimestamp = ($sorted | Select-Object -First 1).BlockTime
+    $oldestDate = ConvertFrom-Timestamp -Timestamp $oldestTimestamp
+    Write-Host ("  Oldest transaction: {0} ({1})" -f $oldestDate.LocalDateTime, $oldestTimestamp) -ForegroundColor DarkCyan
 
-# Extract and display information about the newest transaction.
-$newestTimestamp = ($sorted | Select-Object -Last 1).BlockTime
-$newestDate = ConvertFrom-Timestamp -Timestamp $newestTimestamp
-Write-Host ("  Newest transaction: {0} ({1})" -f $newestDate.LocalDateTime, $newestTimestamp) -ForegroundColor DarkCyan
+    # Extract and display information about the newest transaction.
+    $newestTimestamp = ($sorted | Select-Object -Last 1).BlockTime
+    $newestDate = ConvertFrom-Timestamp -Timestamp $newestTimestamp
+    Write-Host ("  Newest transaction: {0} ({1})" -f $newestDate.LocalDateTime, $newestTimestamp) -ForegroundColor DarkCyan
+}
 
 <# -----------------------------------------------------------------
 OUTPUT                                                             |
