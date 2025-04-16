@@ -3,13 +3,16 @@ using System.Text.Json;
 using PWSH.Kaspa.Base;
 using PWSH.Kaspa.Constants;
 
+using LanguageExt;
+using static LanguageExt.Prelude;
+
 namespace PWSH.Kaspa.Verbs
 {
     [Cmdlet(KaspaVerbNames.Calculate, "TransactionMass")]
     [OutputType(typeof(ResponseSchema))]
     public sealed partial class CalculateTransactionMass : KaspaPSCmdlet
     {
-        private KaspaJob<ResponseSchema?>? _job;
+        private KaspaJob<ResponseSchema>? _job;
 
 /* -----------------------------------------------------------------
 CONSTRUCTORS                                                       |
@@ -30,10 +33,10 @@ PROCESS                                                            |
 
         protected override void BeginProcessing()
         {
-            async Task<(ResponseSchema?, ErrorRecord?)> processLogic(CancellationToken cancellation_token) { return await DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, cancellation_token); }
+            async Task<Either<ErrorRecord, ResponseSchema>> processLogic(CancellationToken cancellation_token) { return await DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, cancellation_token); }
 
             var thisName = this.MyInvocation.MyCommand.Name;
-            this._job = new KaspaJob<ResponseSchema?>(processLogic, thisName);
+            this._job = new KaspaJob<ResponseSchema>(processLogic, thisName);
         }
 
         protected override void ProcessRecord()
@@ -59,14 +62,15 @@ PROCESS                                                            |
             }
             else
             {
-                var (responce, err) = DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, stoppingToken).GetAwaiter().GetResult();
-                if (err is not null)
+                var result = DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, stoppingToken).GetAwaiter().GetResult();
+                if (result.IsLeft)
                 {
-                    WriteError(err);
+                    WriteError(result.LeftToList()[0]);
                     return;
                 }
 
-                WriteObject(responce);
+                var response = result.RightToList()[0];
+                WriteObject(response);
             }
         }
 
@@ -77,41 +81,35 @@ HELPERS                                                            |
         protected override string BuildQuery()
             => "transactions/mass";
 
-        private (RequestSchema?, ErrorRecord?) BuildRequest()
-            => Transaction is null
-                ? (null, new ErrorRecord(new NullReferenceException("Processed transaction is null."), "NullParameter", ErrorCategory.InvalidOperation, this))
-                : (Transaction.ToMassRequestSchema(), null);
-
-        private async Task<(ResponseSchema?, ErrorRecord?)> DoProcessLogicAsync(HttpClient http_client, JsonSerializerOptions deserializer_options, CancellationToken cancellation_token)
+        private async Task<Either<ErrorRecord, ResponseSchema>> DoProcessLogicAsync(HttpClient http_client, JsonSerializerOptions deserializer_options, CancellationToken cancellation_token)
         {
             try
             {
-                var (requestSchema, err) = BuildRequest();
-                if (err is not null) return (default, err);
-                if (requestSchema is null) return (default, new ErrorRecord(new InvalidOperationException("Failed to initialize request."), "TaskNull", ErrorCategory.InvalidOperation, this));
+                var requestSchema = Transaction!.ToMassRequestSchema();
 
                 if (requestSchema.SubnetworkID.CompareString(Globals.MINNER_TRANSACTION_SUBNETWORK))
                 {
                     // It seems that for miner transactions mass is always 0 https://github.com/kaspa-ng/kaspa-rest-server/pull/63/files
-                    return (new() { ComputeMass = 0, Mass = 0, StorageMass = 0 }, null);
+                    return Right<ErrorRecord, ResponseSchema>(new() { ComputeMass = 0, Mass = 0, StorageMass = 0 });
                 }
                 else
                 {
-                    (var request, err) = await http_client.SendRequestAsync(this, Globals.KASPA_API_ADDRESS, BuildQuery(), HttpMethod.Post, requestSchema, TimeoutSeconds, cancellation_token);
-                    if (err is not null) return (default, err);
-                    if (request is null) return (default, new ErrorRecord(new InvalidOperationException("Received a null response from the API."), "TaskNull", ErrorCategory.InvalidOperation, this));
+                    var result = await http_client.SendRequestAsync(this, Globals.KASPA_API_ADDRESS, BuildQuery(), HttpMethod.Post, requestSchema, TimeoutSeconds, cancellation_token);
+                    if (result.IsLeft)
+                        return result.LeftToList()[0];
 
-                    (var response, err) = await request.ProcessResponseAsync<ResponseSchema>(deserializer_options, this, TimeoutSeconds, cancellation_token);
-                    if (err is not null) return (default, err);
-                    if (response is null) return (default, new ErrorRecord(new InvalidOperationException("The API response was not initialized."), "TaskNull", ErrorCategory.InvalidOperation, this));
+                    var response = result.RightToList()[0];
+                    var message = await response.ProcessResponseAsync<ResponseSchema>(deserializer_options, this, TimeoutSeconds, cancellation_token);
+                    if (message.IsLeft)
+                        return message.LeftToList()[0];
 
-                    return (response, null);
+                    return Right<ErrorRecord, ResponseSchema>(message.RightToList()[0]);
                 }
             }
             catch (OperationCanceledException)
-            { return (default, new ErrorRecord(new OperationCanceledException("Task was canceled."), "TaskCanceled", ErrorCategory.OperationStopped, this)); }
+            { return Left<ErrorRecord, ResponseSchema>(new ErrorRecord(new OperationCanceledException("Task was canceled."), "TaskCanceled", ErrorCategory.OperationStopped, this)); }
             catch (Exception e)
-            { return (default, new ErrorRecord(e, "TaskInvalid", ErrorCategory.InvalidOperation, this)); }
+            { return Left<ErrorRecord, ResponseSchema>(new ErrorRecord(e, "TaskInvalid", ErrorCategory.InvalidOperation, this)); }
         }
     }
 }

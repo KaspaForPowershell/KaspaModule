@@ -4,6 +4,9 @@ using System.Web;
 using PWSH.Kaspa.Base;
 using PWSH.Kaspa.Constants;
 
+using LanguageExt;
+using static LanguageExt.Prelude;
+
 namespace PWSH.Kaspa.Verbs
 {
     /// <summary>
@@ -15,7 +18,7 @@ namespace PWSH.Kaspa.Verbs
     [OutputType(typeof(List<ResponseSchema>))]
     public sealed partial class GetFullTransactionsForAddressPage : KaspaPSCmdlet
     {
-        private KaspaJob<List<ResponseSchema>?>? _job;
+        private KaspaJob<List<ResponseSchema>>? _job;
 
 /* -----------------------------------------------------------------
 CONSTRUCTORS                                                       |
@@ -36,10 +39,10 @@ PROCESS                                                            |
 
         protected override void BeginProcessing()
         {
-            async Task<(List<ResponseSchema>?, ErrorRecord?)> processLogic(CancellationToken cancellation_token) { return await DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, cancellation_token); }
+            async Task<Either<ErrorRecord, List<ResponseSchema>>> processLogic(CancellationToken cancellation_token) { return await DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, cancellation_token); }
 
             var thisName = this.MyInvocation.MyCommand.Name;
-            this._job = new KaspaJob<List<ResponseSchema>?>(processLogic, thisName);
+            this._job = new KaspaJob<List<ResponseSchema>>(processLogic, thisName);
         }
 
         protected override void ProcessRecord()
@@ -65,14 +68,15 @@ PROCESS                                                            |
             }
             else
             {
-                var (responce, err) = DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, stoppingToken).GetAwaiter().GetResult();
-                if (err is not null)
+                var result = DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, stoppingToken).GetAwaiter().GetResult();
+                if (result.IsLeft)
                 {
-                    WriteError(err);
+                    WriteError(result.LeftToList()[0]);
                     return;
                 }
 
-                WriteObject(responce);
+                var response = result.RightToList()[0];
+                WriteObject(response);
             }
         }
 
@@ -97,7 +101,7 @@ HELPERS                                                            |
             return $"addresses/{Address}/full-transactions-page?" + queryParams.ToString();
         }
 
-        private async Task<(List<ResponseSchema>?, ErrorRecord?)> DoProcessLogicAsync(HttpClient http_client, JsonSerializerOptions deserializer_options, CancellationToken cancellation_token)
+        private async Task<Either<ErrorRecord, List<ResponseSchema>>> DoProcessLogicAsync(HttpClient http_client, JsonSerializerOptions deserializer_options, CancellationToken cancellation_token)
         {
             try
             {
@@ -109,24 +113,26 @@ HELPERS                                                            |
 
                 while (hasMorePages)
                 {
-                    var (request, err) = await http_client.SendRequestAsync(this, Globals.KASPA_API_ADDRESS, BuildQuery(nextPage), HttpMethod.Get, null, TimeoutSeconds, cancellation_token);
-                    if (err is not null) return (default, err);
-                    if (request is null) return (default, new ErrorRecord(new InvalidOperationException("Received a null response from the API."), "TaskNull", ErrorCategory.InvalidOperation, this));
-                    if (!request.IsSuccessStatusCode) return (default, new ErrorRecord(new HttpRequestException($"API request failed with status code {request.StatusCode}."), "HttpRequestFailed", ErrorCategory.InvalidResult, request.StatusCode));
-                    
-                    (var response, err) = await request.ProcessResponseAsync<List<ResponseSchema>>(deserializer_options, this, TimeoutSeconds, cancellation_token);
-                    if (err is not null) return (default, err);
-                    if (response is null) return (default, new ErrorRecord(new InvalidOperationException("The API response was not initialized."), "TaskNull", ErrorCategory.InvalidOperation, this));
-                    if (cancellation_token.IsCancellationRequested) return (default, new ErrorRecord(new OperationCanceledException(), "TaskCanceled", ErrorCategory.OperationStopped, this));
+                    var result = await http_client.SendRequestAsync(this, Globals.KASPA_API_ADDRESS, BuildQuery(nextPage), HttpMethod.Get, null, TimeoutSeconds, cancellation_token);
+                    if (result.IsLeft)
+                        return result.LeftToList()[0];
 
-                    output.AddRange(response);
+                    var response = result.RightToList()[0];
+                    var message = await response.ProcessResponseAsync<List<ResponseSchema>>(deserializer_options, this, TimeoutSeconds, cancellation_token);
+                    if (message.IsLeft)
+                        return message.LeftToList()[0];
+
+                    if (cancellation_token.IsCancellationRequested) 
+                        return Left<ErrorRecord, List<ResponseSchema>>(new ErrorRecord(new OperationCanceledException(), "TaskCanceled", ErrorCategory.OperationStopped, this));
+
+                    output.AddRange(message.RightToList()[0]);
 
                     // Process headers.
                     var headerString = this.ParameterSetName == GetFullTransactionsForAddressPageParameterSetName.BEFORE_TIMESTAMP
                         ? "X-Next-Page-Before"
                         : "X-Next-Page-After";
 
-                    nextPage = request.Headers.TryGetValues(headerString, out var beforeValues)
+                    nextPage = response.Headers.TryGetValues(headerString, out var beforeValues)
                      ? beforeValues.FirstOrDefault()
                      : null;
 
@@ -144,10 +150,10 @@ HELPERS                                                            |
                     //Console.WriteLine($"Page: {currPage}, Total transactions: {output.Count}");
                 }
 
-                return ([.. output.OrderBy(tx => tx.BlockTime)], null);
+                return Right<ErrorRecord, List<ResponseSchema>>([.. output.OrderBy(tx => tx.BlockTime)]);
             }
             catch (Exception e)
-            { return (default, new ErrorRecord(e, "UnhandledException", ErrorCategory.NotSpecified, this)); }
+            { return Left<ErrorRecord, List<ResponseSchema>>(new ErrorRecord(e, "UnhandledException", ErrorCategory.NotSpecified, this)); }
         }
     }
 }

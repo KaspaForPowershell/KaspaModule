@@ -2,6 +2,9 @@
 using System.Text;
 using System.Text.Json;
 
+using LanguageExt;
+using static LanguageExt.Prelude;
+
 namespace PWSH.Kaspa.Base
 {
     public static class ExtensionMethods
@@ -35,7 +38,7 @@ namespace PWSH.Kaspa.Base
         /// <param name="timeout_seconds">Request timeout in seconds</param>
         /// <param name="cancellation_token">Token to monitor for cancellation requests</param>
         /// <returns>Tuple containing the HTTP response message (if successful) and an error record (if failed)</returns>
-        public static async Task<(HttpResponseMessage?, ErrorRecord?)> SendRequestAsync(this HttpClient me, object? obj, string api_address, string query, HttpMethod method, object? body, ulong timeout_seconds, CancellationToken cancellation_token)
+        public static async Task<Either<ErrorRecord, HttpResponseMessage>> SendRequestAsync(this HttpClient me, object? obj, string api_address, string query, HttpMethod method, object? body, ulong timeout_seconds, CancellationToken cancellation_token)
         {
             try
             {
@@ -45,7 +48,7 @@ namespace PWSH.Kaspa.Base
                 if (body is not null)
                 {
                     if (method == HttpMethod.Get || method == HttpMethod.Head)
-                        return (null, new ErrorRecord(new InvalidOperationException($"HTTP method {method} does not support a request body."), "HttpRequestFailed", ErrorCategory.ConnectionError, obj));
+                        return Left<ErrorRecord, HttpResponseMessage>(new ErrorRecord(new InvalidOperationException($"HTTP method {method} does not support a request body."), "HttpRequestFailed", ErrorCategory.ConnectionError, obj));
 
                     var json = JsonSerializer.Serialize(body);
                     request.Content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -55,10 +58,13 @@ namespace PWSH.Kaspa.Base
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation_token);
                 cts.CancelAfter(TimeSpan.FromSeconds(timeout_seconds));
 
-                return (await me.SendAsync(request, cts.Token), null);
+                var response = await me.SendAsync(request, cts.Token);
+                return response is null
+                    ? Left<ErrorRecord, HttpResponseMessage>(new ErrorRecord(new NullReferenceException("Received null response from API."), "HttpRequestFailed", ErrorCategory.ConnectionError, obj))
+                    : Right<ErrorRecord, HttpResponseMessage>(response);
             }
             catch (Exception e)
-            { return (null, new ErrorRecord(e, "HttpRequestFailed", ErrorCategory.ConnectionError, obj)); }
+            { return Left<ErrorRecord, HttpResponseMessage>(new ErrorRecord(e, "HttpRequestFailed", ErrorCategory.ConnectionError, obj)); }
         }
 
          /// <summary>
@@ -72,7 +78,7 @@ namespace PWSH.Kaspa.Base
         /// <returns>Tuple containing the response content as a string (if successful) and an error record (if failed)</returns>
         /// Will output data as RAW string, with no deserialization. Useful for debuging.
         /// </summary>
-        public static async Task<(string?, ErrorRecord?)> ProcessResponseRAWAsync(this HttpResponseMessage me, object? obj, ulong timeout_seconds, CancellationToken cancellation_token)
+        public static async Task<Either<ErrorRecord, string>> ProcessResponseRAWAsync(this HttpResponseMessage me, object? obj, ulong timeout_seconds, CancellationToken cancellation_token)
         {
             try
             {
@@ -81,11 +87,11 @@ namespace PWSH.Kaspa.Base
                 cts.CancelAfter(TimeSpan.FromSeconds(timeout_seconds));
 
                 return me.IsSuccessStatusCode
-                    ? (await me.Content.ReadAsStringAsync(cts.Token), null)
-                    : (null, new ErrorRecord(new HttpRequestException($"API request failed with status code {me.StatusCode}."), "HttpRequestFailed", ErrorCategory.InvalidResult, me.StatusCode));
+                    ? Right<ErrorRecord, string>(await me.Content.ReadAsStringAsync(cts.Token))
+                    : Left<ErrorRecord, string>(new ErrorRecord(new HttpRequestException($"API request failed with status code {me.StatusCode}."), "HttpRequestFailed", ErrorCategory.InvalidResult, me.StatusCode));
             }
             catch (Exception e)
-            {  return (null, new ErrorRecord(e, "UnhandledException", ErrorCategory.NotSpecified, obj)); }
+            {  return Left<ErrorRecord, string>(new ErrorRecord(e, "UnhandledException", ErrorCategory.NotSpecified, obj)); }
         }
 
         /// <summary>
@@ -100,23 +106,27 @@ namespace PWSH.Kaspa.Base
         /// <returns>Tuple containing the deserialized object (if successful) and an error record (if failed)</returns>
         /// Will output data as deserialized schema.
         /// </summary>
-        public async static Task<(T?, ErrorRecord?)> ProcessResponseAsync<T>(this HttpResponseMessage me, JsonSerializerOptions? options, object? obj, ulong timeout_seconds, CancellationToken cancellation_token)
+        public async static Task<Either<ErrorRecord, T>> ProcessResponseAsync<T>(this HttpResponseMessage me, JsonSerializerOptions? options, object? obj, ulong timeout_seconds, CancellationToken cancellation_token)
             where T : class
         {
             try
             {
                 if (!me.IsSuccessStatusCode) 
-                    return (null, new ErrorRecord(new HttpRequestException($"API request failed with status code {me.StatusCode}."), "HttpRequestFailed", ErrorCategory.InvalidResult, me.StatusCode));
+                    return Left<ErrorRecord, T>(new ErrorRecord(new HttpRequestException($"API request failed with status code {me.StatusCode}."), "HttpRequestFailed", ErrorCategory.InvalidResult, me.StatusCode));
 
                 // Set custom timeout.
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation_token);
                 cts.CancelAfter(TimeSpan.FromSeconds(timeout_seconds));
 
                 var body = await me.Content.ReadAsStringAsync(cts.Token);
-                return (JsonSerializer.Deserialize<T>(body, options), null);
+                var response = JsonSerializer.Deserialize<T>(body, options);
+
+                return response is null
+                    ? Left<ErrorRecord, T>(new ErrorRecord(new NullReferenceException("API response is null."), "HttpRequestFailed", ErrorCategory.ConnectionError, obj))
+                    : Right<ErrorRecord, T>(response);
             }
             catch (Exception e)
-            { return (null, new ErrorRecord(e, "UnhandledException", ErrorCategory.NotSpecified, obj)); }
+            { return Left<ErrorRecord, T>(new ErrorRecord(e, "UnhandledException", ErrorCategory.NotSpecified, obj)); }
         }
 
         /// <summary>

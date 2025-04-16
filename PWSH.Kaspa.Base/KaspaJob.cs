@@ -1,4 +1,5 @@
-﻿using System.Management.Automation;
+﻿using LanguageExt;
+using System.Management.Automation;
 
 namespace PWSH.Kaspa.Base
 {
@@ -6,7 +7,7 @@ namespace PWSH.Kaspa.Base
     {
         private readonly object _lock = new();
         private readonly CancellationTokenSource _internalCancellation = new();
-        private readonly Func<CancellationToken, Task<(T, ErrorRecord?)>> _processTask;
+        private readonly Func<CancellationToken, Task<Either<ErrorRecord, T>>> _processTask;
 
         private bool _hasMoreData;
         private string _statusMessage;
@@ -15,7 +16,7 @@ namespace PWSH.Kaspa.Base
 CONSTRUCTORS                                                       |
 ----------------------------------------------------------------- */
 
-        public KaspaJob(Func<CancellationToken, Task<(T, ErrorRecord?)>> process_task, string command_name) : base(command_name)
+        public KaspaJob(Func<CancellationToken, Task<Either<ErrorRecord, T>>> process_task, string command_name) : base(command_name)
         {
             lock (this._lock)
             {
@@ -79,14 +80,16 @@ HELPERS                                                            |
                 }
 
                 using var linkedCancellations = CancellationTokenSource.CreateLinkedTokenSource(this._internalCancellation.Token, cancellation_token);
-                var (result, err) = await this._processTask(linkedCancellations.Token);
+                var result = await this._processTask(linkedCancellations.Token);
 
                 lock (this._lock)
                 {
                     this._hasMoreData = false;
 
-                    if (err is not null)
+                    if (result.IsLeft)
                     {
+                        var err = result.LeftToList()[0];
+
                         this._statusMessage = $"Job failed: {err.ErrorDetails?.Message ?? err.Exception?.Message ?? "Unknown error"}";
                         Error.Add(err);
                         Error.Complete();
@@ -94,8 +97,10 @@ HELPERS                                                            |
                     }
                     else
                     {
+                        var ok = result.RightToList()[0];
+
                         this._statusMessage = "Job is completed.";
-                        Output.Add(PSObject.AsPSObject(result));
+                        Output.Add(PSObject.AsPSObject(ok));
                         Output.Complete();
                         SetJobState(JobState.Completed);
                     }

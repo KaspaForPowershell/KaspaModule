@@ -3,6 +3,9 @@ using System.Text.Json;
 using PWSH.Kaspa.Base;
 using PWSH.Kaspa.Constants;
 
+using LanguageExt;
+using static LanguageExt.Prelude;
+
 namespace PWSH.Kaspa.Verbs
 {
     /// <summary>
@@ -12,7 +15,7 @@ namespace PWSH.Kaspa.Verbs
     [OutputType(typeof(ResponseSchema))]
     public sealed partial class GetBalanceFromAddress : KaspaPSCmdlet
     {
-        private KaspaJob<ResponseSchema?>? _job;
+        private KaspaJob<ResponseSchema>? _job;
 
 /* -----------------------------------------------------------------
 CONSTRUCTORS                                                       |
@@ -33,10 +36,10 @@ PROCESS                                                            |
 
         protected override void BeginProcessing()
         {
-            async Task<(ResponseSchema?, ErrorRecord?)> processLogic(CancellationToken cancellation_token) { return await DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, cancellation_token); }
+            async Task<Either<ErrorRecord, ResponseSchema>> processLogic(CancellationToken cancellation_token) { return await DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, cancellation_token); }
 
             var thisName = this.MyInvocation.MyCommand.Name;
-            this._job = new KaspaJob<ResponseSchema?>(processLogic, thisName);
+            this._job = new KaspaJob<ResponseSchema>(processLogic, thisName);
         }
 
         protected override void ProcessRecord()
@@ -62,14 +65,15 @@ PROCESS                                                            |
             }
             else
             {
-                var (responce, err) = DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, stoppingToken).GetAwaiter().GetResult();
-                if (err is not null)
+                var result = DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, stoppingToken).GetAwaiter().GetResult();
+                if (result.IsLeft)
                 {
-                    WriteError(err);
+                    WriteError(result.LeftToList()[0]);
                     return;
                 }
 
-                WriteObject(responce);
+                var response = result.RightToList()[0];
+                WriteObject(response);
             }
         }
 
@@ -80,24 +84,25 @@ HELPERS                                                            |
         protected override string BuildQuery()
             => $"addresses/{Address}/balance";
 
-        private async Task<(ResponseSchema?, ErrorRecord?)> DoProcessLogicAsync(HttpClient http_client, JsonSerializerOptions deserializer_options, CancellationToken cancellation_token)
+        private async Task<Either<ErrorRecord, ResponseSchema>> DoProcessLogicAsync(HttpClient http_client, JsonSerializerOptions deserializer_options, CancellationToken cancellation_token)
         {
             try
             {
-                var (request, err) = await http_client.SendRequestAsync(this, Globals.KASPA_API_ADDRESS, BuildQuery(), HttpMethod.Get, null, TimeoutSeconds, cancellation_token);
-                if (err is not null) return (default, err);
-                if (request is null) return (default, new ErrorRecord(new InvalidOperationException("Received a null response from the API."), "TaskNull", ErrorCategory.InvalidOperation, this));
+                var result = await http_client.SendRequestAsync(this, Globals.KASPA_API_ADDRESS, BuildQuery(), HttpMethod.Get, null, TimeoutSeconds, cancellation_token);
+                if (result.IsLeft)
+                    return result.LeftToList()[0];
 
-                (var response, err) = await request.ProcessResponseAsync<ResponseSchema>(deserializer_options, this, TimeoutSeconds, cancellation_token);
-                if (err is not null) return (default, err);
-                if (response is null) return (default, new ErrorRecord(new InvalidOperationException("The API response was not initialized."), "TaskNull", ErrorCategory.InvalidOperation, this));
+                var response = result.RightToList()[0];
+                var message = await response.ProcessResponseAsync<ResponseSchema>(deserializer_options, this, TimeoutSeconds, cancellation_token);
+                if (message.IsLeft)
+                    return message.LeftToList()[0];
 
-                return (response, null);
+                return Right<ErrorRecord, ResponseSchema>(message.RightToList()[0]);
             }
             catch (OperationCanceledException)
-            { return (default, new ErrorRecord(new OperationCanceledException("Task was canceled."), "TaskCanceled", ErrorCategory.OperationStopped, this)); }
+            { return Left<ErrorRecord, ResponseSchema>(new ErrorRecord(new OperationCanceledException("Task was canceled."), "TaskCanceled", ErrorCategory.OperationStopped, this)); }
             catch (Exception e)
-            { return (default, new ErrorRecord(e, "TaskInvalid", ErrorCategory.InvalidOperation, this)); }
+            { return Left<ErrorRecord, ResponseSchema>(new ErrorRecord(e, "TaskInvalid", ErrorCategory.InvalidOperation, this)); }
         }
     }
 }
