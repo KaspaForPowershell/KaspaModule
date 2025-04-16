@@ -40,6 +40,11 @@ jobs:
     - name: Publish
       run: dotnet publish -c Release -o publish
 
+    - name: Include Examples directory
+      shell: pwsh
+      run: |
+        if (Test-Path -Path ".\Examples\" -PathType Container) { Copy-Item -Path ".\Examples\" -Destination publish -Recurse }
+  
     - name: Zip published files
       run: Compress-Archive -Path publish/* -DestinationPath release.zip
 
