@@ -86,24 +86,23 @@ HELPERS                                                            |
                 {
                     this._hasMoreData = false;
 
-                    if (result.IsLeft)
-                    {
-                        var err = result.LeftToList()[0];
-
-                        this._statusMessage = $"Job failed: {err.ErrorDetails?.Message ?? err.Exception?.Message ?? "Unknown error"}";
-                        Error.Add(err);
-                        Error.Complete();
-                        SetJobState(JobState.Failed);
-                    }
-                    else
-                    {
-                        var ok = result.RightToList()[0];
-
-                        this._statusMessage = "Job is completed.";
-                        Output.Add(PSObject.AsPSObject(ok));
-                        Output.Complete();
-                        SetJobState(JobState.Completed);
-                    }
+                    result.Match
+                    (
+                        Right: ok =>
+                        {
+                            this._statusMessage = "Job is completed.";
+                            Output.Add(PSObject.AsPSObject(ok));
+                            Output.Complete();
+                            SetJobState(JobState.Completed);
+                        },
+                        Left: err =>
+                        {
+                            this._statusMessage = $"Job failed: {err.ErrorDetails?.Message ?? err.Exception?.Message ?? "Unknown error"}";
+                            Error.Add(err);
+                            Error.Complete();
+                            SetJobState(JobState.Failed);
+                        }
+                    );
                 }
             }
             catch (OperationCanceledException)

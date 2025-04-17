@@ -4,7 +4,6 @@ using PWSH.Kaspa.Constants;
 
 using LanguageExt;
 using static LanguageExt.Prelude;
-using static PWSH.Kaspa.Verbs.GetVirtualSelectedParentBlueScore;
 
 namespace PWSH.Kaspa.Verbs
 {
@@ -65,14 +64,11 @@ PROCESS                                                            |
             else
             {
                 var result = DoProcessLogicAsync(this._httpClient!, stoppingToken).GetAwaiter().GetResult();
-                if (result.IsLeft)
-                {
-                    WriteError(result.LeftToList()[0]);
-                    return;
-                }
-
-                var response = result.RightToList()[0];
-                WriteObject(response);
+                result.Match
+                (
+                    Right: ok => WriteObject(ok),
+                    Left: err => WriteError(err)
+                );
             }
         }
 
@@ -87,19 +83,22 @@ HELPERS                                                            |
         {
             try
             {
-                var result = await http_client.SendRequestAsync(this, Globals.KASPA_API_ADDRESS, BuildQuery(), HttpMethod.Get, null, TimeoutSeconds, cancellation_token);
-                if (result.IsLeft)
-                    return result.LeftToList()[0];
+                var response = await http_client.SendRequestAsync(this, Globals.KASPA_API_ADDRESS, BuildQuery(), HttpMethod.Get, null, TimeoutSeconds, cancellation_token);
+                return await response.MatchAsync
+                (
+                    RightAsync: async ok =>
+                    {
+                        var message = await ok.ProcessResponseRAWAsync(this, TimeoutSeconds, cancellation_token);
+                        if (message.IsLeft)
+                            return message.LeftToList()[0];
 
-                var response = result.RightToList()[0];
-                var message = await response.ProcessResponseRAWAsync(this, TimeoutSeconds, cancellation_token);
-                if (message.IsLeft)
-                    return message.LeftToList()[0];
+                        if (!decimal.TryParse(message.RightToList()[0], out var parsed))
+                            return Left<ErrorRecord, decimal>(new ErrorRecord(new ParseException("JSON parse failed."), "ParseFailed", ErrorCategory.ParserError, this));
 
-                if (!decimal.TryParse(message.RightToList()[0], out var parsed))
-                    return Left<ErrorRecord, decimal>(new ErrorRecord(new ParseException("JSON parse failed."), "ParseFailed", ErrorCategory.ParserError, this));
-
-                return Right<ErrorRecord, decimal>(parsed);
+                        return Right<ErrorRecord, decimal>(parsed);
+                    },
+                    Left: err => Left<ErrorRecord, decimal>(err)
+                );
             }
             catch (OperationCanceledException)
             { return Left<ErrorRecord, decimal>(new ErrorRecord(new OperationCanceledException("Task was canceled."), "TaskCanceled", ErrorCategory.OperationStopped, this)); }

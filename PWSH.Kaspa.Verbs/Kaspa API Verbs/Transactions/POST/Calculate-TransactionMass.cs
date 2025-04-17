@@ -63,14 +63,11 @@ PROCESS                                                            |
             else
             {
                 var result = DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, stoppingToken).GetAwaiter().GetResult();
-                if (result.IsLeft)
-                {
-                    WriteError(result.LeftToList()[0]);
-                    return;
-                }
-
-                var response = result.RightToList()[0];
-                WriteObject(response);
+                result.Match
+                (
+                    Right: ok => WriteObject(ok),
+                    Left: err => WriteError(err)
+                );
             }
         }
 
@@ -94,16 +91,19 @@ HELPERS                                                            |
                 }
                 else
                 {
-                    var result = await http_client.SendRequestAsync(this, Globals.KASPA_API_ADDRESS, BuildQuery(), HttpMethod.Post, requestSchema, TimeoutSeconds, cancellation_token);
-                    if (result.IsLeft)
-                        return result.LeftToList()[0];
+                    var response = await http_client.SendRequestAsync(this, Globals.KASPA_API_ADDRESS, BuildQuery(), HttpMethod.Post, requestSchema, TimeoutSeconds, cancellation_token);
+                    return await response.MatchAsync
+                    (
+                        RightAsync: async ok =>
+                        {
+                            var message = await ok.ProcessResponseAsync<ResponseSchema>(deserializer_options, this, TimeoutSeconds, cancellation_token);
+                            if (message.IsLeft)
+                                return message.LeftToList()[0];
 
-                    var response = result.RightToList()[0];
-                    var message = await response.ProcessResponseAsync<ResponseSchema>(deserializer_options, this, TimeoutSeconds, cancellation_token);
-                    if (message.IsLeft)
-                        return message.LeftToList()[0];
-
-                    return Right<ErrorRecord, ResponseSchema>(message.RightToList()[0]);
+                            return Right<ErrorRecord, ResponseSchema>(message.RightToList()[0]);
+                        },
+                        Left: err => Left<ErrorRecord, ResponseSchema>(err)
+                    );
                 }
             }
             catch (OperationCanceledException)

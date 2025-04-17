@@ -69,14 +69,11 @@ PROCESS                                                            |
             else
             {
                 var result = DoProcessLogicAsync(this._httpClient!, this._deserializerOptions!, stoppingToken).GetAwaiter().GetResult();
-                if (result.IsLeft)
-                {
-                    WriteError(result.LeftToList()[0]);
-                    return;
-                }
-
-                var response = result.RightToList()[0];
-                WriteObject(response);
+                result.Match
+                (
+                    Right: ok => WriteObject(ok),
+                    Left: err => WriteError(err)
+                );
             }
         }
 
