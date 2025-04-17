@@ -3,7 +3,6 @@ using System.Text;
 using System.Text.Json;
 
 using LanguageExt;
-using static LanguageExt.Prelude;
 
 namespace PWSH.Kaspa.Base
 {
@@ -48,7 +47,7 @@ namespace PWSH.Kaspa.Base
                 if (body is not null)
                 {
                     if (method == HttpMethod.Get || method == HttpMethod.Head)
-                        return Left<ErrorRecord, HttpResponseMessage>(new ErrorRecord(new InvalidOperationException($"HTTP method {method} does not support a request body."), "HttpRequestFailed", ErrorCategory.ConnectionError, obj));
+                        return new ErrorRecord(new InvalidOperationException($"HTTP method {method} does not support a request body."), "HttpRequestFailed", ErrorCategory.ConnectionError, obj);
 
                     var json = JsonSerializer.Serialize(body);
                     request.Content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -60,14 +59,14 @@ namespace PWSH.Kaspa.Base
 
                 var response = await me.SendAsync(request, cts.Token);
                 return response is null
-                    ? Left<ErrorRecord, HttpResponseMessage>(new ErrorRecord(new NullReferenceException("Received null response from API."), "HttpRequestFailed", ErrorCategory.ConnectionError, obj))
-                    : Right<ErrorRecord, HttpResponseMessage>(response);
+                    ? new ErrorRecord(new NullReferenceException("Received null response from API."), "HttpRequestFailed", ErrorCategory.ConnectionError, obj)
+                    : response;
             }
             catch (Exception e)
-            { return Left<ErrorRecord, HttpResponseMessage>(new ErrorRecord(e, "HttpRequestFailed", ErrorCategory.ConnectionError, obj)); }
+            { return new ErrorRecord(e, "HttpRequestFailed", ErrorCategory.ConnectionError, obj); }
         }
 
-         /// <summary>
+        /// <summary>
         /// Processes an HTTP response by returning its raw content without deserialization.
         /// Useful for debugging or when raw response is needed.
         /// </summary>
@@ -87,11 +86,11 @@ namespace PWSH.Kaspa.Base
                 cts.CancelAfter(TimeSpan.FromSeconds(timeout_seconds));
 
                 return me.IsSuccessStatusCode
-                    ? Right<ErrorRecord, string>(await me.Content.ReadAsStringAsync(cts.Token))
-                    : Left<ErrorRecord, string>(new ErrorRecord(new HttpRequestException($"API request failed with status code {me.StatusCode}."), "HttpRequestFailed", ErrorCategory.InvalidResult, me.StatusCode));
+                    ? await me.Content.ReadAsStringAsync(cts.Token)
+                    : new ErrorRecord(new HttpRequestException($"API request failed with status code {me.StatusCode}."), "HttpRequestFailed", ErrorCategory.InvalidResult, me.StatusCode);
             }
             catch (Exception e)
-            {  return Left<ErrorRecord, string>(new ErrorRecord(e, "UnhandledException", ErrorCategory.NotSpecified, obj)); }
+            { return new ErrorRecord(e, "UnhandledException", ErrorCategory.NotSpecified, obj); }
         }
 
         /// <summary>
@@ -111,8 +110,8 @@ namespace PWSH.Kaspa.Base
         {
             try
             {
-                if (!me.IsSuccessStatusCode) 
-                    return Left<ErrorRecord, T>(new ErrorRecord(new HttpRequestException($"API request failed with status code {me.StatusCode}."), "HttpRequestFailed", ErrorCategory.InvalidResult, me.StatusCode));
+                if (!me.IsSuccessStatusCode)
+                    return new ErrorRecord(new HttpRequestException($"API request failed with status code {me.StatusCode}."), "HttpRequestFailed", ErrorCategory.InvalidResult, me.StatusCode);
 
                 // Set custom timeout.
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellation_token);
@@ -122,11 +121,11 @@ namespace PWSH.Kaspa.Base
                 var response = JsonSerializer.Deserialize<T>(body, options);
 
                 return response is null
-                    ? Left<ErrorRecord, T>(new ErrorRecord(new NullReferenceException("API response is null."), "HttpRequestFailed", ErrorCategory.ConnectionError, obj))
-                    : Right<ErrorRecord, T>(response);
+                    ? new ErrorRecord(new NullReferenceException("API response is null."), "HttpRequestFailed", ErrorCategory.ConnectionError, obj)
+                    : response;
             }
             catch (Exception e)
-            { return Left<ErrorRecord, T>(new ErrorRecord(e, "UnhandledException", ErrorCategory.NotSpecified, obj)); }
+            { return new ErrorRecord(e, "UnhandledException", ErrorCategory.NotSpecified, obj); }
         }
 
         /// <summary>

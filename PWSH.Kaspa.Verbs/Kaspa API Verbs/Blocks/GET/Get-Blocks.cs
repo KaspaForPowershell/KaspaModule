@@ -5,7 +5,6 @@ using PWSH.Kaspa.Base;
 using PWSH.Kaspa.Constants;
 
 using LanguageExt;
-using static LanguageExt.Prelude;
 
 namespace PWSH.Kaspa.Verbs
 {
@@ -96,21 +95,14 @@ HELPERS                                                            |
                 var response = await http_client.SendRequestAsync(this, Globals.KASPA_API_ADDRESS, BuildQuery(), HttpMethod.Get, null, TimeoutSeconds, cancellation_token);
                 return await response.MatchAsync
                 (
-                    RightAsync: async ok =>
-                    {
-                        var message = await ok.ProcessResponseAsync<ResponseSchema>(deserializer_options, this, TimeoutSeconds, cancellation_token);
-                        if (message.IsLeft)
-                            return message.LeftToList()[0];
-
-                        return Right<ErrorRecord, ResponseSchema>(message.RightToList()[0]);
-                    },
-                    Left: err => Left<ErrorRecord, ResponseSchema>(err)
+                    RightAsync: async ok => await ok.ProcessResponseAsync<ResponseSchema>(deserializer_options, this, TimeoutSeconds, cancellation_token),
+                    Left: err => err
                 );
             }
             catch (OperationCanceledException)
-            { return Left<ErrorRecord, ResponseSchema>(new ErrorRecord(new OperationCanceledException("Task was canceled."), "TaskCanceled", ErrorCategory.OperationStopped, this)); }
+            { return new ErrorRecord(new OperationCanceledException("Task was canceled."), "TaskCanceled", ErrorCategory.OperationStopped, this); }
             catch (Exception e)
-            { return Left<ErrorRecord, ResponseSchema>(new ErrorRecord(e, "TaskInvalid", ErrorCategory.InvalidOperation, this)); }
+            { return new ErrorRecord(e, "TaskInvalid", ErrorCategory.InvalidOperation, this); }
         }
     }
 }

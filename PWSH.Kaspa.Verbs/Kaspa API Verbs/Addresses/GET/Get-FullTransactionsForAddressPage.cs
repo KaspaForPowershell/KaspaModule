@@ -150,7 +150,7 @@ HELPERS                                                            |
                 return Right<ErrorRecord, List<ResponseSchema>>([.. output.OrderBy(tx => tx.BlockTime)]);
             }
             catch (Exception e)
-            { return Left<ErrorRecord, List<ResponseSchema>>(new ErrorRecord(e, "UnhandledException", ErrorCategory.NotSpecified, this)); }
+            { return new ErrorRecord(e, "UnhandledException", ErrorCategory.NotSpecified, this); }
         }
     }
 }

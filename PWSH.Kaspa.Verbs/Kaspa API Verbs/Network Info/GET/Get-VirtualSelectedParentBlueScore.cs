@@ -103,13 +103,13 @@ HELPERS                                                            |
 
                         return Right<ErrorRecord, ulong>(message.RightToList()[0].BlueScore);
                     },
-                    Left: err => Left<ErrorRecord, ulong>(err)
+                    Left: err => err
                 );
             }
             catch (OperationCanceledException)
-            { return Left<ErrorRecord, ulong>(new ErrorRecord(new OperationCanceledException("Task was canceled."), "TaskCanceled", ErrorCategory.OperationStopped, this)); }
+            { return new ErrorRecord(new OperationCanceledException("Task was canceled."), "TaskCanceled", ErrorCategory.OperationStopped, this); }
             catch (Exception e)
-            { return Left<ErrorRecord, ulong>(new ErrorRecord(e, "TaskInvalid", ErrorCategory.InvalidOperation, this)); }
+            { return new ErrorRecord(e, "TaskInvalid", ErrorCategory.InvalidOperation, this); }
         }
     }
 }

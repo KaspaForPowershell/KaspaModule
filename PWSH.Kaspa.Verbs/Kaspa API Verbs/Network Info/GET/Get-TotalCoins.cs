@@ -97,13 +97,13 @@ HELPERS                                                            |
 
                         return Right<ErrorRecord, decimal>(parsed);
                     },
-                    Left: err => Left<ErrorRecord, decimal>(err)
+                    Left: err => err
                 );
             }
             catch (OperationCanceledException)
-            { return Left<ErrorRecord, decimal>(new ErrorRecord(new OperationCanceledException("Task was canceled."), "TaskCanceled", ErrorCategory.OperationStopped, this)); }
+            { return new ErrorRecord(new OperationCanceledException("Task was canceled."), "TaskCanceled", ErrorCategory.OperationStopped, this); }
             catch (Exception e)
-            { return Left<ErrorRecord, decimal>(new ErrorRecord(e, "TaskInvalid", ErrorCategory.InvalidOperation, this)); }
+            { return new ErrorRecord(e, "TaskInvalid", ErrorCategory.InvalidOperation, this); }
         }
     }
 }
