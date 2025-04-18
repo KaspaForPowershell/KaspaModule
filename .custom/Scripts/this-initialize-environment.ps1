@@ -23,7 +23,6 @@
 
 param
 (
-	# Optional: If specified, forces re-compilation of the module even if it exists.
 	[Parameter(Mandatory=$false)]
 	[switch] $Force
 )

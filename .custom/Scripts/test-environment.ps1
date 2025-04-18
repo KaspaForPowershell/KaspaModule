@@ -33,11 +33,9 @@
 
 param
 (
-	# Optional: JSON string containing custom settings to override the default settings file.
 	[Parameter(Mandatory=$false, HelpMessage="Pass custom settings that will override settings file")]
 	[System.String] $CustomSettings,
 
-	# Optional: If specified, clears the console before running the script.
 	[Parameter(Mandatory=$false)]
 	[switch] $CleanConsole
 )
