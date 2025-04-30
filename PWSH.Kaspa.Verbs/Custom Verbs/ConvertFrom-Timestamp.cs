@@ -1,8 +1,4 @@
-﻿using System.Management.Automation;
-using PWSH.Kaspa.Base;
-using PWSH.Kaspa.Constants;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     /// <summary>
     /// Convert timespan to date.

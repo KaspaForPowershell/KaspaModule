@@ -1,8 +1,4 @@
-﻿using System.Management.Automation;
-using PWSH.Kaspa.Constants;
-using PWSH.Kaspa.Verbs.Interfaces;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     public sealed partial class CalculateTransactionMass 
     {

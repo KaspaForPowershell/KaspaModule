@@ -1,11 +1,4 @@
-﻿using System.Management.Automation;
-using System.Text.Json;
-using PWSH.Kaspa.Base;
-using PWSH.Kaspa.Constants;
-
-using LanguageExt;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     /// <summary>
     /// This endpoint checks if addresses have had any transaction activity in the past. It is specifically designed for HD Wallets to verify historical address activity.

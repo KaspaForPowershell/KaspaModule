@@ -1,12 +1,4 @@
-﻿using System.Management.Automation;
-using System.Text.Json;
-using System.Web;
-using PWSH.Kaspa.Base;
-using PWSH.Kaspa.Constants;
-
-using LanguageExt;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     /// <summary>
     /// Get all transactions for a given address from database. And then get their related full transaction data.

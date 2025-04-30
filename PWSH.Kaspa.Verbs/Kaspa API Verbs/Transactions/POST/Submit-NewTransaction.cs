@@ -1,12 +1,4 @@
-﻿using System.Management.Automation;
-using System.Text.Json;
-using System.Web;
-using PWSH.Kaspa.Base;
-using PWSH.Kaspa.Constants;
-
-using LanguageExt;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     [Cmdlet(KaspaVerbNames.Submit, "NewTransaction")]
     [OutputType(typeof(ResponseSchema))]

@@ -1,12 +1,4 @@
-﻿using System.Management.Automation;
-using System.Text.Json;
-using PWSH.Kaspa.Base;
-using PWSH.Kaspa.Constants;
-
-using LanguageExt;
-using static LanguageExt.Prelude;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     /// <summary>
     /// Get $KAS price and market cap. Price info is from coingecko.com

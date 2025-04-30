@@ -1,10 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
-using PWSH.Kaspa.Base;
-using PWSH.Kaspa.Base.JSON.Converters;
-using PWSH.Kaspa.Base.JSON.Interfaces;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     public sealed partial class GetHealthState
     {

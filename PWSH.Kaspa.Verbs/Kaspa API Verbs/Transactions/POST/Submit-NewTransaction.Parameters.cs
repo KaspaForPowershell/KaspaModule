@@ -1,7 +1,4 @@
-﻿using PWSH.Kaspa.Constants;
-using System.Management.Automation;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     public sealed partial class SubmitNewTransaction
     {

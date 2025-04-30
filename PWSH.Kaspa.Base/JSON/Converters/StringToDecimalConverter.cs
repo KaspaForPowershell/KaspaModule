@@ -1,7 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using System.Text.Json;
-
-namespace PWSH.Kaspa.Base.JSON.Converters
+﻿namespace PWSH.Kaspa.Base.JSON.Converters
 {
     public class StringToDecimalConverter : JsonConverter<decimal>
     {

@@ -1,7 +1,4 @@
-﻿using System.Management.Automation;
-using System.Text.Json;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     public sealed class KaspaModuleInitializer : IModuleAssemblyInitializer, IDisposable
     {

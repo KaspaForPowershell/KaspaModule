@@ -1,8 +1,4 @@
-﻿using System.Collections;
-using System.Management.Automation;
-using System.Text.RegularExpressions;
-
-namespace PWSH.Kaspa.Base.Attributes
+﻿namespace PWSH.Kaspa.Base.Attributes
 {
     /// <summary>
     /// Validate if a string is a valid Kaspa address pattern: ^kaspa:[a-z0-9]{61,63}$

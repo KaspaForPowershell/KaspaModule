@@ -1,11 +1,4 @@
-﻿using System.Management.Automation;
-using System.Text.Json;
-using PWSH.Kaspa.Base;
-using PWSH.Kaspa.Constants;
-
-using LanguageExt;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     /// <summary>
     /// Checks node and database health by comparing blue score and sync status. Returns health details or 503 if the database lags by ~10min or no nodes are synced.

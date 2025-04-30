@@ -1,11 +1,4 @@
-﻿using System.Management.Automation;
-using System.Text.Json;
-using PWSH.Kaspa.Base;
-using PWSH.Kaspa.Constants;
-
-using LanguageExt;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     /// <summary>
     /// Returns the current max hashrate for Kaspa network in TH/s.

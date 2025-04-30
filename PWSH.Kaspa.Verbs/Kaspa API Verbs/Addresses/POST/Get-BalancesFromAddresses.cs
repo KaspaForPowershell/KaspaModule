@@ -1,11 +1,4 @@
-﻿using System.Management.Automation;
-using PWSH.Kaspa.Constants;
-using System.Text.Json;
-using PWSH.Kaspa.Base;
-
-using LanguageExt;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     /// <summary>
     /// Get balance for a given kaspa address.

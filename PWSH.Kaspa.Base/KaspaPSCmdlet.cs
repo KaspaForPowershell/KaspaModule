@@ -1,7 +1,4 @@
-﻿using System.Management.Automation;
-using System.Text.Json;
-
-namespace PWSH.Kaspa.Base
+﻿namespace PWSH.Kaspa.Base
 {
     public abstract class KaspaPSCmdlet : PSCmdlet
     {

@@ -1,7 +1,4 @@
-﻿using System.Management.Automation;
-using PWSH.Kaspa.Constants;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     public sealed partial class GetVirtualSelectedParentBlueScore
     {

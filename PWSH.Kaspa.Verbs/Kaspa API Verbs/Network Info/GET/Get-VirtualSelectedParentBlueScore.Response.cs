@@ -1,9 +1,4 @@
-﻿using PWSH.Kaspa.Base.JSON.Converters;
-using PWSH.Kaspa.Base.JSON.Interfaces;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     public sealed partial class GetVirtualSelectedParentBlueScore
     {

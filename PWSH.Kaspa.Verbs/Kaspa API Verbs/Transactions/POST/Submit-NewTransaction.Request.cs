@@ -1,7 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using PWSH.Kaspa.Base;
-
-namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs
 {
     public sealed partial class SubmitNewTransaction
     {
