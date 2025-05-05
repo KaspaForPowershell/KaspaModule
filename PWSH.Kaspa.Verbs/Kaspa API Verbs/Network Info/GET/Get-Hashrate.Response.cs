@@ -1,50 +1,49 @@
-﻿namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs;
+
+public sealed partial class GetHashrate
 {
-    public sealed partial class GetHashrate
+    private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
     {
-        private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
-        {
-            [JsonPropertyName("hashrate")]
-            [JsonConverter(typeof(StringToDecimalConverter))]
-            public decimal Hashrate { get; set; }
+        [JsonPropertyName("hashrate")]
+        [JsonConverter(typeof(StringToDecimalConverter))]
+        public decimal Hashrate { get; set; }
 
 /* -----------------------------------------------------------------
 HELPERS                                                            |
 ----------------------------------------------------------------- */
 
-            public bool Equals(ResponseSchema? other)
-            {
-                if (other is null) return false;
-                if (ReferenceEquals(this, other)) return true;
+        public bool Equals(ResponseSchema? other)
+        {
+            if (other is null) return false;
+            if (ReferenceEquals(this, other)) return true;
 
-                return Hashrate == other.Hashrate;
-            }
+            return Hashrate == other.Hashrate;
+        }
 
-            public string ToJSON()
-                => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
+        public string ToJSON()
+            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
 
 /* -----------------------------------------------------------------
 OVERRIDES                                                          |
 ----------------------------------------------------------------- */
 
-            public override bool Equals(object? obj)
-                => Equals(obj as ResponseSchema);
+        public override bool Equals(object? obj)
+            => Equals(obj as ResponseSchema);
 
-            public override int GetHashCode()
-                => HashCode.Combine(Hashrate);
+        public override int GetHashCode()
+            => HashCode.Combine(Hashrate);
 
 /* -----------------------------------------------------------------
 OPERATOR                                                           |
 ----------------------------------------------------------------- */
 
-            public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
-            {
-                if (left is null) return right is null;
-                return left.Equals(right);
-            }
-
-            public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
-                => !(left == right);
+        public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
+        {
+            if (left is null) return right is null;
+            return left.Equals(right);
         }
+
+        public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
+            => !(left == right);
     }
 }

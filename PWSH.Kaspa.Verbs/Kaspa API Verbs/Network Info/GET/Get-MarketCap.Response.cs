@@ -1,51 +1,50 @@
-﻿namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs;
+
+public sealed partial class GetMarketCap
 {
-    public sealed partial class GetMarketCap
+    private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
     {
-        private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
-        {
-            [JsonPropertyName("marketcap")]
-            [JsonConverter(typeof(StringToDecimalConverter))]
-            public decimal MarketCap { get; set; }
+        [JsonPropertyName("marketcap")]
+        [JsonConverter(typeof(StringToDecimalConverter))]
+        public decimal MarketCap { get; set; }
 
 /* -----------------------------------------------------------------
 HELPERS                                                            |
 ----------------------------------------------------------------- */
 
-            public bool Equals(ResponseSchema? other)
-            {
-                if (other is null) return false;
-                if (ReferenceEquals(this, other)) return true;
+        public bool Equals(ResponseSchema? other)
+        {
+            if (other is null) return false;
+            if (ReferenceEquals(this, other)) return true;
 
-                return MarketCap == other.MarketCap;
-            }
+            return MarketCap == other.MarketCap;
+        }
 
-            public string ToJSON()
-                => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
+        public string ToJSON()
+            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
 
 /* -----------------------------------------------------------------
 OVERRIDES                                                          |
 ----------------------------------------------------------------- */
 
-            public override bool Equals(object? obj)
-                => Equals(obj as ResponseSchema);
+        public override bool Equals(object? obj)
+            => Equals(obj as ResponseSchema);
 
-            public override int GetHashCode()
-                => HashCode.Combine(MarketCap);
+        public override int GetHashCode()
+            => HashCode.Combine(MarketCap);
 
 /* -----------------------------------------------------------------
 OPERATOR                                                           |
 ----------------------------------------------------------------- */
 
-            public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
-            {
-                if (left is null) return right is null;
+        public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
+        {
+            if (left is null) return right is null;
 
-                return left.Equals(right);
-            }
-
-            public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
-                => !(left == right);
+            return left.Equals(right);
         }
+
+        public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
+            => !(left == right);
     }
 }

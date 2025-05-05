@@ -1,111 +1,110 @@
-﻿namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs;
+
+public sealed partial class GetFeeEstimate
 {
-    public sealed partial class GetFeeEstimate
+    private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
     {
-        private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
-        {
-            [JsonPropertyName("priorityBucket")]
-            public FeeEstimateBucketResponseSchema? PriorityBucket { get; set; }
+        [JsonPropertyName("priorityBucket")]
+        public FeeEstimateBucketResponseSchema? PriorityBucket { get; set; }
 
-            [JsonPropertyName("normalBuckets")]
-            public List<FeeEstimateBucketResponseSchema>? NormalBuckets { get; set; }
+        [JsonPropertyName("normalBuckets")]
+        public List<FeeEstimateBucketResponseSchema>? NormalBuckets { get; set; }
 
-            [JsonPropertyName("lowBuckets")]
-            public List<FeeEstimateBucketResponseSchema>? LowBuckets { get; set; }
+        [JsonPropertyName("lowBuckets")]
+        public List<FeeEstimateBucketResponseSchema>? LowBuckets { get; set; }
 
 /* -----------------------------------------------------------------
 HELPERS                                                            |
 ----------------------------------------------------------------- */
 
-            public bool Equals(ResponseSchema? other)
-            {
-                if (other is null) return false;
-                if (ReferenceEquals(this, other)) return true;
+        public bool Equals(ResponseSchema? other)
+        {
+            if (other is null) return false;
+            if (ReferenceEquals(this, other)) return true;
 
-                return
-                    PriorityBucket == other.PriorityBucket &&
-                    NormalBuckets.CompareList(other.NormalBuckets) &&
-                    LowBuckets.CompareList(other.LowBuckets);
-            }
+            return
+                PriorityBucket == other.PriorityBucket &&
+                NormalBuckets.CompareList(other.NormalBuckets) &&
+                LowBuckets.CompareList(other.LowBuckets);
+        }
 
-            public string ToJSON()
-                => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
+        public string ToJSON()
+            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
 
 /* -----------------------------------------------------------------
 OVERRIDES                                                          |
 ----------------------------------------------------------------- */
 
-            public override bool Equals(object? obj)
-                => Equals(obj as ResponseSchema);
+        public override bool Equals(object? obj)
+            => Equals(obj as ResponseSchema);
 
-            public override int GetHashCode()
-                => HashCode.Combine(PriorityBucket, NormalBuckets, LowBuckets);
+        public override int GetHashCode()
+            => HashCode.Combine(PriorityBucket, NormalBuckets, LowBuckets);
 
 /* -----------------------------------------------------------------
 OPERATOR                                                           |
 ----------------------------------------------------------------- */
 
-            public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
-            {
-                if (left is null) return right is null;
+        public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
+        {
+            if (left is null) return right is null;
 
-                return left.Equals(right);
-            }
-
-            public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
-                => !(left == right);
+            return left.Equals(right);
         }
 
-        private sealed class FeeEstimateBucketResponseSchema : IEquatable<FeeEstimateBucketResponseSchema>, IJSONableDisplayable
-        {
-            [JsonPropertyName("feerate")]
-            [JsonConverter(typeof(StringToDecimalConverter))]
-            public decimal Feerate { get; set; }
+        public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
+            => !(left == right);
+    }
 
-            [JsonPropertyName("estimatedSeconds")]
-            [JsonConverter(typeof(StringToDecimalConverter))]
-            public decimal EstimatedSeconds { get; set; }
+    private sealed class FeeEstimateBucketResponseSchema : IEquatable<FeeEstimateBucketResponseSchema>, IJSONableDisplayable
+    {
+        [JsonPropertyName("feerate")]
+        [JsonConverter(typeof(StringToDecimalConverter))]
+        public decimal Feerate { get; set; }
+
+        [JsonPropertyName("estimatedSeconds")]
+        [JsonConverter(typeof(StringToDecimalConverter))]
+        public decimal EstimatedSeconds { get; set; }
 
 /* -----------------------------------------------------------------
 HELPERS                                                            |
 ----------------------------------------------------------------- */
 
-            public bool Equals(FeeEstimateBucketResponseSchema? other)
-            {
-                if (other is null) return false;
-                if (ReferenceEquals(this, other)) return true;
+        public bool Equals(FeeEstimateBucketResponseSchema? other)
+        {
+            if (other is null) return false;
+            if (ReferenceEquals(this, other)) return true;
 
-                return
-                    Feerate == other.Feerate &&
-                    EstimatedSeconds == other.EstimatedSeconds;
-            }
+            return
+                Feerate == other.Feerate &&
+                EstimatedSeconds == other.EstimatedSeconds;
+        }
 
-            public string ToJSON()
-                => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
+        public string ToJSON()
+            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
 
 /* -----------------------------------------------------------------
 OVERRIDES                                                          |
 ----------------------------------------------------------------- */
 
-            public override bool Equals(object? obj)
-                => Equals(obj as FeeEstimateBucketResponseSchema);
+        public override bool Equals(object? obj)
+            => Equals(obj as FeeEstimateBucketResponseSchema);
 
-            public override int GetHashCode()
-                => HashCode.Combine(Feerate, EstimatedSeconds);
+        public override int GetHashCode()
+            => HashCode.Combine(Feerate, EstimatedSeconds);
 
 /* -----------------------------------------------------------------
 OPERATOR                                                           |
 ----------------------------------------------------------------- */
 
-            public static bool operator ==(FeeEstimateBucketResponseSchema? left, FeeEstimateBucketResponseSchema? right)
-            {
-                if (left is null) return right is null;
+        public static bool operator ==(FeeEstimateBucketResponseSchema? left, FeeEstimateBucketResponseSchema? right)
+        {
+            if (left is null) return right is null;
 
-                return left.Equals(right);
-            }
-
-            public static bool operator !=(FeeEstimateBucketResponseSchema? left, FeeEstimateBucketResponseSchema? right)
-                => !(left == right);
+            return left.Equals(right);
         }
+
+        public static bool operator !=(FeeEstimateBucketResponseSchema? left, FeeEstimateBucketResponseSchema? right)
+            => !(left == right);
     }
 }

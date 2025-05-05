@@ -1,21 +1,20 @@
-﻿namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs;
+
+public sealed partial class GetBlock
 {
-    public sealed partial class GetBlock
-    {
-        [ValidateKaspaBlockHash]
-        [Parameter(Mandatory = true, HelpMessage = "Kaspa block ID(hash).")]
-        public string? BlockID { get; set; }
+    [ValidateKaspaBlockHash]
+    [Parameter(Mandatory = true, HelpMessage = "Kaspa block ID(hash).")]
+    public string? BlockID { get; set; }
 
-        [Parameter(Mandatory = false)]
-        public SwitchParameter IncludeTransactions { get; set; }
+    [Parameter(Mandatory = false)]
+    public SwitchParameter IncludeTransactions { get; set; }
 
-        [Parameter(Mandatory = false)]
-        public SwitchParameter IncludeColor { get; set; }
+    [Parameter(Mandatory = false)]
+    public SwitchParameter IncludeColor { get; set; }
 
-        [Parameter(Mandatory = false, HelpMessage = "Http client timeout.")]
-        public ulong TimeoutSeconds { get; set; } = Globals.DEFAULT_TIMEOUT_SECONDS;
+    [Parameter(Mandatory = false, HelpMessage = "Http client timeout.")]
+    public ulong TimeoutSeconds { get; set; } = Globals.DEFAULT_TIMEOUT_SECONDS;
 
-        [Parameter(Mandatory = false)]
-        public SwitchParameter AsJob { get; set; }
-    }
+    [Parameter(Mandatory = false)]
+    public SwitchParameter AsJob { get; set; }
 }

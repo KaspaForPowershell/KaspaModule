@@ -1,61 +1,60 @@
-﻿namespace PWSH.Kaspa.Verbs
+﻿namespace PWSH.Kaspa.Verbs;
+
+public sealed partial class GetHalving
 {
-    public sealed partial class GetHalving
+    private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
     {
-        private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
-        {
-            [JsonPropertyName("nextHalvingTimestamp")]
-            [JsonConverter(typeof(StringToLongConverter))]
-            public long NextHalvingTimestamp { get; set; }
+        [JsonPropertyName("nextHalvingTimestamp")]
+        [JsonConverter(typeof(StringToLongConverter))]
+        public long NextHalvingTimestamp { get; set; }
 
-            [JsonPropertyName("nextHalvingDate")]
-            public string? NextHalvingDate { get; set; }
+        [JsonPropertyName("nextHalvingDate")]
+        public string? NextHalvingDate { get; set; }
 
-            [JsonPropertyName("nextHalvingAmount")]
-            [JsonConverter(typeof(StringToDecimalConverter))]
-            public decimal NextHalvingAmount { get; set; }
+        [JsonPropertyName("nextHalvingAmount")]
+        [JsonConverter(typeof(StringToDecimalConverter))]
+        public decimal NextHalvingAmount { get; set; }
 
 /* -----------------------------------------------------------------
 HELPERS                                                            |
 ----------------------------------------------------------------- */
 
-            public bool Equals(ResponseSchema? other)
-            {
-                if (other is null) return false;
-                if (ReferenceEquals(this, other)) return true;
+        public bool Equals(ResponseSchema? other)
+        {
+            if (other is null) return false;
+            if (ReferenceEquals(this, other)) return true;
 
-                return
-                    NextHalvingTimestamp == other.NextHalvingTimestamp &&
-                    NextHalvingDate.CompareString(other.NextHalvingDate) &&
-                    NextHalvingAmount == other.NextHalvingAmount;
-            }
+            return
+                NextHalvingTimestamp == other.NextHalvingTimestamp &&
+                NextHalvingDate.CompareString(other.NextHalvingDate) &&
+                NextHalvingAmount == other.NextHalvingAmount;
+        }
 
-            public string ToJSON()
-                => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
+        public string ToJSON()
+            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
 
 /* -----------------------------------------------------------------
 OVERRIDES                                                          |
 ----------------------------------------------------------------- */
 
-            public override bool Equals(object? obj)
-                => Equals(obj as ResponseSchema);
+        public override bool Equals(object? obj)
+            => Equals(obj as ResponseSchema);
 
-            public override int GetHashCode()
-                => HashCode.Combine(NextHalvingTimestamp, NextHalvingDate, NextHalvingAmount);
+        public override int GetHashCode()
+            => HashCode.Combine(NextHalvingTimestamp, NextHalvingDate, NextHalvingAmount);
 
 /* -----------------------------------------------------------------
 OPERATOR                                                           |
 ----------------------------------------------------------------- */
 
-            public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
-            {
-                if (left is null) return right is null;
+        public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
+        {
+            if (left is null) return right is null;
 
-                return left.Equals(right);
-            }
-
-            public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
-                => !(left == right);
+            return left.Equals(right);
         }
+
+        public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
+            => !(left == right);
     }
 }

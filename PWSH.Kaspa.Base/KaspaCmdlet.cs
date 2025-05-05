@@ -1,6 +1,5 @@
-﻿namespace PWSH.Kaspa.Base
+﻿namespace PWSH.Kaspa.Base;
+
+public abstract class KaspaCmdlet : Cmdlet
 {
-    public abstract class KaspaCmdlet : Cmdlet
-    {
-    }
 }
