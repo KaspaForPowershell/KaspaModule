@@ -1,6 +1,6 @@
 ﻿namespace PWSH.Kaspa.Verbs;
 
-public sealed partial class GetBlock
+public sealed partial class GetBlocksFromBlueScore
 {
     [GenerateResponseSchemaBoilerplate]
     private sealed partial class ResponseSchema
@@ -237,7 +237,7 @@ HELPERS                                                            |
     private sealed partial class BlockTransactionVerboseDataResponseSchema
     {
         [JsonPropertyName("transactionId")]
-        public string? TransactionID { get; set; }
+        public string? TransactionId { get; set; }
 
         [JsonPropertyName("hash")]
         public string? Hash { get; set; }

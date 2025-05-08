@@ -2,7 +2,8 @@
 
 public sealed partial class SearchForTransactions
 {
-    private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
+    [GenerateResponseSchemaBoilerplate]
+    private sealed partial class ResponseSchema
     {
         [JsonPropertyName("subnetwork_id")]
         public string? SubnetworkID { get; set; }
@@ -46,67 +47,10 @@ public sealed partial class SearchForTransactions
 
         [JsonPropertyName("outputs")]
         public List<TransactionOutputResponseSchema>? Outputs { get; set; }
-
-/* -----------------------------------------------------------------
-HELPERS                                                            |
------------------------------------------------------------------ */
-
-        public bool Equals(ResponseSchema? other)
-        {
-            if (other is null) return false;
-            if (ReferenceEquals(this, other)) return true;
-
-            return
-                SubnetworkID == other.SubnetworkID &&
-                TransactionID == other.TransactionID &&
-                Hash == other.Hash &&
-                Mass == other.Mass &&
-                Payload == other.Payload &&
-                BlockHash.CompareList(other.BlockHash) &&
-                BlockTime == other.BlockTime &&
-                IsAccepted == other.IsAccepted &&
-                AcceptingBlockHash == other.AcceptingBlockHash &&
-                AcceptingBlockBlueScore == other.AcceptingBlockBlueScore &&
-                AcceptingBlockTime == other.AcceptingBlockTime &&
-                Inputs.CompareList(other.Inputs) &&
-                Outputs.CompareList(other.Outputs);
-        }
-
-        public string ToJSON()
-            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
-
-/* -----------------------------------------------------------------
-OVERRIDES                                                          |
------------------------------------------------------------------ */
-
-        public override bool Equals(object? obj)
-        => Equals(obj as ResponseSchema);
-
-        public override int GetHashCode()
-        {
-            var hash = HashCode.Combine(SubnetworkID, TransactionID, Hash, Mass, Payload);
-            hash = BlockHash.GenerateHashCode(hash);
-            hash = HashCode.Combine(BlockTime, IsAccepted, AcceptingBlockHash, AcceptingBlockBlueScore, AcceptingBlockTime);
-            hash = Inputs.GenerateHashCode(hash);
-            return Outputs.GenerateHashCode(hash);
-        }
-
-/* -----------------------------------------------------------------
-OPERATOR                                                           |
------------------------------------------------------------------ */
-
-        public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
-        {
-            if (left is null) return right is null;
-
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
-            => !(left == right);
     }
 
-    private sealed class TransactionInputResponseSchema : IEquatable<TransactionInputResponseSchema>, IJSONableDisplayable
+    [GenerateResponseSchemaBoilerplate]
+    private sealed partial class TransactionInputResponseSchema
     {
         [JsonPropertyName("transaction_id")]
         public string? TransactionID { get; set; }
@@ -137,61 +81,10 @@ OPERATOR                                                           |
         [JsonPropertyName("sig_op_count")]
         [JsonConverter(typeof(StringToUintConverter))]
         public uint SigOpCount { get; set; }
-
-/* -----------------------------------------------------------------
-HELPERS                                                            |
------------------------------------------------------------------ */
-
-        public bool Equals(TransactionInputResponseSchema? other)
-        {
-            if (other is null) return false;
-            if (ReferenceEquals(this, other)) return true;
-
-            return
-                TransactionID == other.TransactionID &&
-                Index == other.Index &&
-                PreviousOutpointHash == other.PreviousOutpointHash &&
-                PreviousOutpointIndex == other.PreviousOutpointIndex &&
-                PreviousOutpointResolved == other.PreviousOutpointResolved &&
-                PreviousOutpointAddress == other.PreviousOutpointAddress &&
-                PreviousOutpointAmount == other.PreviousOutpointAmount &&
-                SignatureScript == other.SignatureScript &&
-                SigOpCount == other.SigOpCount;
-        }
-
-        public string ToJSON()
-            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
-
-/* -----------------------------------------------------------------
-OVERRIDES                                                          |
------------------------------------------------------------------ */
-
-        public override bool Equals(object? obj)
-            => Equals(obj as TransactionInputResponseSchema);
-
-        public override int GetHashCode()
-        {
-            var hash = HashCode.Combine(TransactionID, Index);
-            HashCode.Combine(hash, PreviousOutpointHash, PreviousOutpointIndex, PreviousOutpointResolved, PreviousOutpointAddress, PreviousOutpointAmount, SignatureScript, SigOpCount);
-            HashCode.Combine(hash, SignatureScript, SigOpCount);
-            return hash;
-        }
-
-/* -----------------------------------------------------------------
-OPERATOR                                                           |
------------------------------------------------------------------ */
-
-        public static bool operator ==(TransactionInputResponseSchema? left, TransactionInputResponseSchema? right)
-        {
-            if (left is null) return right is null;
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(TransactionInputResponseSchema? left, TransactionInputResponseSchema? right)
-            => !(left == right);
     }
 
-    private sealed class TransactionOutputResponseSchema : IEquatable<TransactionOutputResponseSchema>, IJSONableDisplayable
+    [GenerateResponseSchemaBoilerplate]
+    private sealed partial class TransactionOutputResponseSchema
     {
         [JsonPropertyName("transaction_id")]
         public string? TransactionID { get; set; }
@@ -215,50 +108,5 @@ OPERATOR                                                           |
 
         [JsonPropertyName("accepting_block_hash")]
         public string? AcceptingBlockHash { get; set; }
-
-/* -----------------------------------------------------------------
-HELPERS                                                            |
------------------------------------------------------------------ */
-
-        public bool Equals(TransactionOutputResponseSchema? other)
-        {
-            if (other is null) return false;
-            if (ReferenceEquals(this, other)) return true;
-
-            return
-                TransactionID.CompareString(other.TransactionID) &&
-                Index == other.Index &&
-                Amount == other.Amount &&
-                ScriptPublicKey.CompareString(other.ScriptPublicKey) &&
-                ScriptPublicKeyAddress.CompareString(other.ScriptPublicKeyAddress) &&
-                ScriptPublicKeyType.CompareString(other.ScriptPublicKeyType) &&
-                AcceptingBlockHash.CompareString(other.AcceptingBlockHash);
-        }
-
-        public string ToJSON()
-            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
-
-/* -----------------------------------------------------------------
-OVERRIDES                                                          |
------------------------------------------------------------------ */
-
-        public override bool Equals(object? obj)
-            => Equals(obj as TransactionOutputResponseSchema);
-
-        public override int GetHashCode()
-            => HashCode.Combine(TransactionID, Index, Amount, ScriptPublicKey, ScriptPublicKeyAddress, ScriptPublicKeyType, AcceptingBlockHash);
-
-/* -----------------------------------------------------------------
-OPERATOR                                                           |
------------------------------------------------------------------ */
-
-        public static bool operator ==(TransactionOutputResponseSchema? left, TransactionOutputResponseSchema? right)
-        {
-            if (left is null) return right is null;
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(TransactionOutputResponseSchema? left, TransactionOutputResponseSchema? right)
-            => !(left == right);
     }
 }

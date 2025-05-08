@@ -2,7 +2,8 @@
 
 public sealed partial class GetBalancesFromAddresses
 {
-    private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
+    [GenerateResponseSchemaBoilerplate]
+    private sealed partial class ResponseSchema
     {
         [JsonPropertyName("address")]
         public string? Address { get; set; }
@@ -10,46 +11,5 @@ public sealed partial class GetBalancesFromAddresses
         [JsonPropertyName("balance")]
         [JsonConverter(typeof(StringToUlongConverter))]
         public ulong Balance { get; set; }
-
-/* -----------------------------------------------------------------
-HELPERS                                                            |
------------------------------------------------------------------ */
-
-        public bool Equals(ResponseSchema? other)
-        {
-            if (other is null) return false;
-            if (ReferenceEquals(this, other)) return true;
-
-            return
-                Address.CompareString(other.Address) &&
-                Balance == other.Balance;
-        }
-
-        public string ToJSON()
-            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
-
-/* -----------------------------------------------------------------
-OVERRIDES                                                          |
------------------------------------------------------------------ */
-
-        public override bool Equals(object? obj)
-            => Equals(obj as ResponseSchema);
-
-        public override int GetHashCode()
-            => HashCode.Combine(Address, Balance);
-
-/* -----------------------------------------------------------------
-OPERATOR                                                           |
------------------------------------------------------------------ */
-
-        public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
-        {
-            if (left is null) return right is null;
-
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
-            => !(left == right);
     }
 }

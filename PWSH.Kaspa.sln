@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PWSH.Kaspa.Verbs", "PWSH.Ka
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PWSH.Kaspa.Base", "PWSH.Kaspa.Base\PWSH.Kaspa.Base.csproj", "{19444277-B1FA-41AD-96A7-15D6BAE47DEC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PWSH.Kaspa.SourceGenerators", "PWSH.Kaspa.SourceGenerators\PWSH.Kaspa.SourceGenerators.csproj", "{62FADB18-7A7B-46B5-A70D-5FC17BE472EA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{19444277-B1FA-41AD-96A7-15D6BAE47DEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{19444277-B1FA-41AD-96A7-15D6BAE47DEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{19444277-B1FA-41AD-96A7-15D6BAE47DEC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{62FADB18-7A7B-46B5-A70D-5FC17BE472EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{62FADB18-7A7B-46B5-A70D-5FC17BE472EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{62FADB18-7A7B-46B5-A70D-5FC17BE472EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{62FADB18-7A7B-46B5-A70D-5FC17BE472EA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

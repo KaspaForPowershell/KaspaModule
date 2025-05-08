@@ -2,7 +2,8 @@
 
 public sealed partial class GetFeeEstimate
 {
-    private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
+    [GenerateResponseSchemaBoilerplate]
+    private sealed partial class ResponseSchema
     {
         [JsonPropertyName("priorityBucket")]
         public FeeEstimateBucketResponseSchema? PriorityBucket { get; set; }
@@ -12,51 +13,10 @@ public sealed partial class GetFeeEstimate
 
         [JsonPropertyName("lowBuckets")]
         public List<FeeEstimateBucketResponseSchema>? LowBuckets { get; set; }
-
-/* -----------------------------------------------------------------
-HELPERS                                                            |
------------------------------------------------------------------ */
-
-        public bool Equals(ResponseSchema? other)
-        {
-            if (other is null) return false;
-            if (ReferenceEquals(this, other)) return true;
-
-            return
-                PriorityBucket == other.PriorityBucket &&
-                NormalBuckets.CompareList(other.NormalBuckets) &&
-                LowBuckets.CompareList(other.LowBuckets);
-        }
-
-        public string ToJSON()
-            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
-
-/* -----------------------------------------------------------------
-OVERRIDES                                                          |
------------------------------------------------------------------ */
-
-        public override bool Equals(object? obj)
-            => Equals(obj as ResponseSchema);
-
-        public override int GetHashCode()
-            => HashCode.Combine(PriorityBucket, NormalBuckets, LowBuckets);
-
-/* -----------------------------------------------------------------
-OPERATOR                                                           |
------------------------------------------------------------------ */
-
-        public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
-        {
-            if (left is null) return right is null;
-
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
-            => !(left == right);
     }
 
-    private sealed class FeeEstimateBucketResponseSchema : IEquatable<FeeEstimateBucketResponseSchema>, IJSONableDisplayable
+    [GenerateResponseSchemaBoilerplate]
+    private sealed partial class FeeEstimateBucketResponseSchema
     {
         [JsonPropertyName("feerate")]
         [JsonConverter(typeof(StringToDecimalConverter))]
@@ -65,46 +25,5 @@ OPERATOR                                                           |
         [JsonPropertyName("estimatedSeconds")]
         [JsonConverter(typeof(StringToDecimalConverter))]
         public decimal EstimatedSeconds { get; set; }
-
-/* -----------------------------------------------------------------
-HELPERS                                                            |
------------------------------------------------------------------ */
-
-        public bool Equals(FeeEstimateBucketResponseSchema? other)
-        {
-            if (other is null) return false;
-            if (ReferenceEquals(this, other)) return true;
-
-            return
-                Feerate == other.Feerate &&
-                EstimatedSeconds == other.EstimatedSeconds;
-        }
-
-        public string ToJSON()
-            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
-
-/* -----------------------------------------------------------------
-OVERRIDES                                                          |
------------------------------------------------------------------ */
-
-        public override bool Equals(object? obj)
-            => Equals(obj as FeeEstimateBucketResponseSchema);
-
-        public override int GetHashCode()
-            => HashCode.Combine(Feerate, EstimatedSeconds);
-
-/* -----------------------------------------------------------------
-OPERATOR                                                           |
------------------------------------------------------------------ */
-
-        public static bool operator ==(FeeEstimateBucketResponseSchema? left, FeeEstimateBucketResponseSchema? right)
-        {
-            if (left is null) return right is null;
-
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(FeeEstimateBucketResponseSchema? left, FeeEstimateBucketResponseSchema? right)
-            => !(left == right);
     }
 }

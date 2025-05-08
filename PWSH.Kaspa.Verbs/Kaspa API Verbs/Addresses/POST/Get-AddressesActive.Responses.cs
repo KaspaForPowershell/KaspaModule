@@ -2,53 +2,13 @@
 
 public sealed partial class GetAddressesActive
 {
-    private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
+    [GenerateResponseSchemaBoilerplate]
+    private sealed partial class ResponseSchema
     {
         [JsonPropertyName("address")]
         public string? Address { get; set; }
 
         [JsonPropertyName("active")]
         public bool Active { get; set; }
-
-/* -----------------------------------------------------------------
-HELPERS                                                            |
------------------------------------------------------------------ */
-
-        public bool Equals(ResponseSchema? other)
-        {
-            if (other is null) return false;
-            if (ReferenceEquals(this, other)) return true;
-
-            return
-                Address.CompareString(other.Address) &&
-                Active == other.Active;
-        }
-
-        public string ToJSON()
-            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
-
-/* -----------------------------------------------------------------
-OVERRIDES                                                          |
------------------------------------------------------------------ */
-
-        public override bool Equals(object? obj)
-            => Equals(obj as ResponseSchema);
-
-        public override int GetHashCode()
-            => HashCode.Combine(Address, Active);
-
-/* -----------------------------------------------------------------
-OPERATOR                                                           |
------------------------------------------------------------------ */
-
-        public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
-        {
-            if (left is null) return right is null;
-
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
-            => !(left == right);
     }
 }

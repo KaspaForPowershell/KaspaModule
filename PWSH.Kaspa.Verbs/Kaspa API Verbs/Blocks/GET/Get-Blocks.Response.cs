@@ -1,9 +1,19 @@
 ﻿namespace PWSH.Kaspa.Verbs;
 
-public sealed partial class GetBlock
+public sealed partial class GetBlocks
 {
     [GenerateResponseSchemaBoilerplate]
     private sealed partial class ResponseSchema
+    {
+        [JsonPropertyName("blockHashes")]
+        public List<string>? BlockHashes { get; set; }
+
+        [JsonPropertyName("blocks")]
+        public List<BlockResponseSchema>? Blocks { get; set; }
+    }
+
+    [GenerateResponseSchemaBoilerplate]
+    private sealed partial class BlockResponseSchema
     {
         [JsonPropertyName("header")]
         public BlockHeaderResponseSchema? Header { get; set; }

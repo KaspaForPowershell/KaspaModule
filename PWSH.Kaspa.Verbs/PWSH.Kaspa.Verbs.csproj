@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\PWSH.Kaspa.Base\PWSH.Kaspa.Base.csproj" />
     <ProjectReference Include="..\PWSH.Kaspa.Constants\PWSH.Kaspa.Constants.csproj" />
+    <ProjectReference Include="..\PWSH.Kaspa.SourceGenerators\PWSH.Kaspa.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

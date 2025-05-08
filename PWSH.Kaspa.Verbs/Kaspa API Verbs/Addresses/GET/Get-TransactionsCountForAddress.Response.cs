@@ -2,7 +2,8 @@
 
 public sealed partial class GetTransactionsCountForAddress
 {
-    private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
+    [GenerateResponseSchemaBoilerplate]
+    private sealed partial class ResponseSchema
     {
         [JsonPropertyName("total")]
         [JsonConverter(typeof(StringToUlongConverter))]
@@ -10,45 +11,5 @@ public sealed partial class GetTransactionsCountForAddress
 
         [JsonPropertyName("limit_exceeded")]
         public bool LimitExceeded { get; set; }
-
-/* -----------------------------------------------------------------
-HELPERS                                                            |
------------------------------------------------------------------ */
-
-        public bool Equals(ResponseSchema? other)
-        {
-            if (other is null) return false;
-            if (ReferenceEquals(this, other)) return true;
-
-            return
-                Total == other.Total &&
-                LimitExceeded == other.LimitExceeded;
-        }
-
-        public string ToJSON()
-            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
-
-/* -----------------------------------------------------------------
-OVERRIDES                                                          |
------------------------------------------------------------------ */
-
-        public override bool Equals(object? obj)
-            => Equals(obj as ResponseSchema);
-
-        public override int GetHashCode()
-            => HashCode.Combine(Total, LimitExceeded);
-
-/* -----------------------------------------------------------------
-OPERATOR                                                           |
------------------------------------------------------------------ */
-
-        public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
-        {
-            if (left is null) return right is null;
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
-            => !(left == right);
     }
 }

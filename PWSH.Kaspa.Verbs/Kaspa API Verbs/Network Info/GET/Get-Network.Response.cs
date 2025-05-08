@@ -2,7 +2,8 @@
 
 public sealed partial class GetNetwork
 {
-    private sealed class ResponseSchema : IEquatable<ResponseSchema>, IJSONableDisplayable
+    [GenerateResponseSchemaBoilerplate]
+    private sealed partial class ResponseSchema
     {
         [JsonPropertyName("networkName")]
         public string? NetworkName { get; set; }
@@ -33,59 +34,5 @@ public sealed partial class GetNetwork
         [JsonPropertyName("virtualDaaScore")]
         [JsonConverter(typeof(StringToUlongConverter))]
         public ulong VirtualDaaScore { get; set; }
-
-/* -----------------------------------------------------------------
-HELPERS                                                            |
------------------------------------------------------------------ */
-
-        public bool Equals(ResponseSchema? other)
-        {
-            if (other is null) return false;
-            if (ReferenceEquals(this, other)) return true;
-
-            return
-                NetworkName == other.NetworkName &&
-                BlockCount == other.BlockCount &&
-                HeaderCount == other.HeaderCount &&
-                TipHashes.CompareList(other.TipHashes) &&
-                Difficulty == other.Difficulty &&
-                PastMedianTime == other.PastMedianTime &&
-                VirtualParentHashes.CompareList(other.VirtualParentHashes) &&
-                PruningPointHash == other.PruningPointHash &&
-                VirtualDaaScore == other.VirtualDaaScore;
-        }
-
-        public string ToJSON()
-            => JsonSerializer.Serialize(this, KaspaModuleInitializer.Instance?.ResponseSerializer);
-
-/* -----------------------------------------------------------------
-OVERRIDES                                                          |
------------------------------------------------------------------ */
-
-        public override bool Equals(object? obj)
-            => Equals(obj as ResponseSchema);
-
-        public override int GetHashCode()
-        {
-            var hash = HashCode.Combine(NetworkName, BlockCount, HeaderCount);
-            hash = TipHashes.GenerateHashCode(hash);
-            hash = HashCode.Combine(hash, Difficulty, PastMedianTime);
-            hash = VirtualParentHashes.GenerateHashCode(hash);
-            return HashCode.Combine(hash, PruningPointHash, VirtualDaaScore);
-        }
-
-/* -----------------------------------------------------------------
-OPERATOR                                                           |
------------------------------------------------------------------ */
-
-        public static bool operator ==(ResponseSchema? left, ResponseSchema? right)
-        {
-            if (left is null) return right is null;
-
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(ResponseSchema? left, ResponseSchema? right)
-            => !(left == right);
     }
 }
