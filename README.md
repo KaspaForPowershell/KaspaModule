@@ -18,4 +18,6 @@ git clone https://github.com/KaspaForPowershell/KaspaModule
 
 Now if you run a Powershell session, it should automatically compile and import module.
 
+To update repository to latest version, you can use `synchronize-repo.ps1` file. You may need to set `git config --system core.longPaths true` as administrator, especially if you are on Windows.
+
 ### Consider a donation to help support the project: [kaspa:qp5zyvkldad2702h2gj3fv674ehhcwe84ga9d5h5k65pg4jdcj7j5zsd9n9l7](https://www.kas.fyi/address/kaspa:qp5zyvkldad2702h2gj3fv674ehhcwe84ga9d5h5k65pg4jdcj7j5zsd9n9l7)
