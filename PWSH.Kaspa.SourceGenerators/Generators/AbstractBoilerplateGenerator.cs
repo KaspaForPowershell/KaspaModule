@@ -30,30 +30,54 @@ HELPERS                                                            |
         (
             predicate: static (node, _) => IsSyntaxTarget(node),
             transform: (gtx, _) => GetSymanticTarget(gtx)
-        )
-        .Where(static target => target is not null);
+        );
+        //.Where(static target => target.Ok is not null);
 
         context.RegisterSourceOutput(provider, (ctx, source) => Execute(ctx, source));
         context.RegisterPostInitializationOutput(ctx => PostInitializationOutput(ctx));
     }
 
     protected static bool IsSyntaxTarget(SyntaxNode node)
-        =>
-        node is ClassDeclarationSyntax classNode &&
-        classNode.AttributeLists.Count > 0 &&
-        classNode.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
+        => node is ClassDeclarationSyntax classNode && classNode.AttributeLists.Count > 0;
 
-    protected DataContainer? GetSymanticTarget(GeneratorSyntaxContext context)
+    private static bool IsPartial(INamedTypeSymbol classSymbol)
+        => classSymbol.DeclaringSyntaxReferences
+                      .Select(r => r.GetSyntax())
+                      .OfType<ClassDeclarationSyntax>()
+                      .Any(c => c.Modifiers.Any(SyntaxKind.PartialKeyword));
+
+    protected (Diagnostic? Err, DataContainer? Ok) GetSymanticTarget(GeneratorSyntaxContext context)
     {
         var classDeclarationSyntax = (ClassDeclarationSyntax)context.Node;
         var classSymbol = context.SemanticModel.GetDeclaredSymbol(classDeclarationSyntax);
         var attributeSymbol = context.SemanticModel.Compilation.GetTypeByMetadataName(this._attributeFileName);
 
-        if (classSymbol is null || attributeSymbol is null) return null;
+        if (classSymbol is null || attributeSymbol is null) return (null, null);
 
         foreach (var data in classSymbol.GetAttributes())
         {
             if (!attributeSymbol.Equals(data.AttributeClass, SymbolEqualityComparer.Default)) continue;
+
+            if (!IsPartial(classSymbol))
+            {
+                var diagnostic = Diagnostic.Create
+                (
+                    new DiagnosticDescriptor
+                    (
+                        id: "GEN001",
+                        title: "Class must be partial",
+                        messageFormat: "The class '{0}' must be marked partial to use '{1}'",
+                        category: "SourceGeneration",
+                        DiagnosticSeverity.Error,
+                        isEnabledByDefault: true
+                    ),
+                    classSymbol.Locations.FirstOrDefault(),
+                    classSymbol.Name,
+                    this._attributeName
+                );
+
+                return (diagnostic, null);
+            }
 
             var namespaceName = classSymbol.ContainingNamespace.ToDisplayString();
             var className = GetFullMetadataName(classSymbol);
@@ -66,18 +90,24 @@ HELPERS                                                            |
                         .ToList();
 #pragma warning restore IDE0037 // Use inferred member name.
 
-            return new DataContainer(namespaceName, className, properties);
+            return (null, new DataContainer(namespaceName, className, properties));
         }
 
-        return null;
+        return (null, null);
     }
 
-    protected void Execute(SourceProductionContext context, DataContainer? data_container)
+    protected void Execute(SourceProductionContext context, (Diagnostic? Err, DataContainer? Ok) data)
     {
-        if (data_container is null) return;
+        if (data.Err is not  null)
+        {
+            context.ReportDiagnostic(data.Err);
+            return;
+        }
 
-        var namespaceName = data_container.NamespaceName;
-        var className = data_container.ClassName;
+        if (data.Ok is null) return;
+
+        var namespaceName = data.Ok.NamespaceName;
+        var className = data.Ok.ClassName;
         var fileName = $"{namespaceName}.{className}.g.cs";
 
         if (!COUNT_PER_FILE.ContainsKey(fileName)) COUNT_PER_FILE.Add(fileName, 0);
@@ -92,7 +122,7 @@ HELPERS                                                            |
             .AppendLine();
 
         var nestedClassNames = className.Split('.');
-        EmitNestedClassBoilerplate(builder, nestedClassNames, [.. data_container.PropertyInfos]);
+        EmitNestedClassBoilerplate(builder, nestedClassNames, [.. data.Ok.PropertyInfos]);
 
         context.AddSource(fileName, builder.ToString());
     }

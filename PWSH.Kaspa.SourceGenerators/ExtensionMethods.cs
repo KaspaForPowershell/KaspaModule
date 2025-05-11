@@ -147,7 +147,8 @@ public static class ExtensionMethods
                     me.AppendIndent(indent_level + 1).Append($"var hash = {batch[0]}(0);").AppendLine();
                     isFirst = false;
                 }
-                else me.AppendIndent(indent_level + 1).Append($"hash = {batch[0]}(hash);").AppendLine();
+                else 
+                    me.AppendIndent(indent_level + 1).Append($"hash = {batch[0]}(hash);").AppendLine();
             }
                 
             else
