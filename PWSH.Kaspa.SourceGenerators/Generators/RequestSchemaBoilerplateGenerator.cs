@@ -5,13 +5,15 @@ public sealed partial class RequestSchemaBoilerplateGenerator
     :
     AbstractBoilerplateGenerator
 {
+    public const string ATTRIBUTE_NAME = "GenerateRequestSchemaBoilerplateAttribute";
+
 /* -----------------------------------------------------------------
 CONSTRUCTORS                                                       |
 ----------------------------------------------------------------- */
 
     public RequestSchemaBoilerplateGenerator()
         :
-        base("GenerateRequestSchemaBoilerplateAttribute")
+        base(ATTRIBUTE_NAME)
     { }
 
 /* -----------------------------------------------------------------

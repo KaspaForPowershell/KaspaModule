@@ -5,13 +5,15 @@ public sealed partial class ResponseSchemaBoilerplateGenerator
     :
     AbstractBoilerplateGenerator
 {
+    public const string ATTRIBUTE_NAME = "GenerateResponseSchemaBoilerplateAttribute";
+
 /* -----------------------------------------------------------------
 CONSTRUCTORS                                                       |
 ----------------------------------------------------------------- */
 
     public ResponseSchemaBoilerplateGenerator() 
         :
-        base("GenerateResponseSchemaBoilerplateAttribute") 
+        base(ATTRIBUTE_NAME) 
     { }
 
 /* -----------------------------------------------------------------
